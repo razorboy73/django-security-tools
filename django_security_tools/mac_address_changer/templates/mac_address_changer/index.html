@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>MAC Address Changer</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+
+<body>
+    <h1>MAC Address Changer</h1>
+    <form method="POST" action="{% url 'change_mac' %}">
+        {% csrf_token %}
+        <label for="interface">Select Interface:</label>
+        <select name="interface" id="interface">
+            {% for interface in interfaces %}
+            <option value="{{ interface.name }}">{{ interface.name }}</option>
+            {% endfor %}
+        </select>
+        <label for="mac">New MAC Address:</label>
+        <input type="text" id="mac" name="mac">
+        <button type="button" onclick="generateMac()">Generate MAC</button>
+        <button type="submit">Change MAC</button>
+    </form>
+    <form method="POST" action="{% url 'revert_mac' %}">
+        {% csrf_token %}
+        <label for="revert_interface">Revert Interface:</label>
+        <select name="interface" id="revert_interface">
+            {% for interface in interfaces %}
+            <option value="{{ interface.name }}">{{ interface.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Revert to Original MAC</button>
+    </form>
+    <div id="message-container">
+        {% for message in messages %}
+        <div class="alert">{{ message }}</div>
+        {% endfor %}
+    </div>
+    <script>
+        function generateMac() {
+            fetch("{% url 'generate_mac' %}")
+                .then(response => response.json())
+                .then(data => document.getElementById('mac').value = data.mac_address);
+        }
+    </script>
+</body>
+
+</html>
