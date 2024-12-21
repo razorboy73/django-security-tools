@@ -34,11 +34,10 @@
     <!-- Form to Revert MAC Address -->
     <form method="POST" action="{% url 'revert_mac' %}">
         {% csrf_token %}
-        <label for="revert_interface">Revert Interface:</label>
-        <input type="text" id="revert_interface" name="interface" readonly placeholder="Select an interface above">
-        <button type="submit">Revert to Original MAC</button>
+        <button type="submit">Revert to Original MAC Address</button>
     </form>
 
+    
     <!-- Container for Alerts and Messages -->
     <div id="message-container">
         {% for message in messages %}

@@ -6,30 +6,29 @@
 
 ## Description
 
-A collection of network security and hacking tools written in Python and running as apps within a Django framework
+**Django Security Tools** is a suite of network security and engineering tools built as Django applications. This project aims to provide network engineers with a user-friendly interface to perform essential network operations directly from their browser, running locally on their systems.
 
-### Project Root
+The first application in this suite is the **MAC Address Changer**, designed for seamless MAC address management.
 
-- **`.gitignore`**: Specifies files and directories to be excluded from version control, such as `db.sqlite3` and `__pycache__`.
-- **`README.md`**: Provides comprehensive documentation of the project.
-- **`requirements.txt`**: Lists all Python dependencies required to run the project.
+### Features of **MAC Address Changer**:
 
-These tools include the following applications:
-**MAC Address Changer**
+1. **View Network Interfaces**: 
+   - Displays all active network interfaces, including their names and current MAC addresses.
+2. **Generate Random MAC Addresses**: 
+   - Create valid, unique, locally administered MAC addresses with a single click.
+3. **Change MAC Addresses**: 
+   - Modify the MAC address of a selected network interface.
+4. **Revert MAC Addresses**: 
+   - Revert any changed MAC address to its original value, ensuring no permanent changes.
+5. **Track History**: 
+   - Stores a history of generated MAC addresses with timestamps.
+6. **User-Friendly Interface**: 
+   - Built with a responsive design using Django templates, custom CSS, and JavaScript for real-time alerts and feedback.
 
-**MAC Address Changer**
-
-The **MAC Address Changer** is a sophisticated, Django-based web application designed for network engineers to manage and modify the Media Access Control (MAC) addresses of their devices seamlessly. This tool is part of a broader suite of network security and engineering tools, developed to run locally and assist in everyday network management tasks.
-
-The application enables users to:
-
-1. View a list of available network interfaces.
-2. Generate random, unique MAC addresses on demand.
-3. Change the MAC address of a selected interface.
-4. Revert back to the original MAC address when required.
-5. Maintain a history of all generated MAC addresses, including timestamps for tracking purposes.
-
-The application provides an intuitive front-end interface with CSS styling and JavaScript alerts to notify users of changes and errors. By integrating Django's robust backend capabilities with Python's subprocess library, this tool ensures secure and efficient handling of system commands.
+### Recent Updates:
+- Added functionality to track which network interface was last modified.
+- Simplified the process of reverting to the original MAC address by automatically identifying the last changed interface.
+- Improved error handling for edge cases such as invalid MAC addresses or unavailable network interfaces.
 
 ---
 
@@ -37,55 +36,124 @@ The application provides an intuitive front-end interface with CSS styling and J
 
 ### Distinctiveness:
 
-This project is unique as it integrates low-level network manipulation with a high-level web framework like Django. Unlike typical Django applications focused solely on database CRUD operations or general-purpose web interfaces, this application interacts with the operating system to perform real-time network interface modifications. The integration of system-level command execution into a user-friendly web application sets this project apart from traditional Django projects.
+This project stands out because it integrates system-level operations (e.g., MAC address changes via `ifconfig` or `ip`) with a high-level web framework like Django. It bridges the gap between operating system utilities and web-based network management.
+
+Key distinguishing factors include:
+- **System-Level Integration**: Uses Python's `subprocess` library to directly interact with the OS, making real-time changes to network configurations.
+- **Interactive Web UI**: Combines Django templates, CSS, and JavaScript for a dynamic and user-friendly experience.
+- **Reversible Operations**: Tracks and reverts MAC changes, ensuring reliability.
 
 ### Complexity:
 
-1. **System Interaction**: The project uses Python’s `subprocess` library to execute network commands like `ifconfig`, making it interact directly with the operating system. This introduces complexities such as error handling, command validation, and ensuring system security.
-2. **Random MAC Address Generation**: Implementing a utility to generate unique, valid MAC addresses while ensuring that duplicates are never reused requires attention to randomness and database integrity.
-3. **Data Persistence**: The application stores the history of generated MAC addresses and the original MAC address for reversion, adding a layer of database interaction that ties into the app’s core functionality.
-4. **Error Handling and Alerts**: Real-time feedback to users via JavaScript alerts, coupled with Django’s messaging framework, enhances the user experience while adding complexity to the system.
-5. **Integration of Frontend and Backend**: The application incorporates custom CSS for styling and JavaScript for interactivity, ensuring a seamless user experience alongside robust backend logic.
-6. **Reversibility**: The ability to revert to the original MAC address adds an additional layer of functionality that ensures reliability and usability for network engineers.
-
-These factors together demonstrate the distinctiveness and complexity of the project, showcasing its uniqueness in the realm of Django applications.
+1. **OS-Level Command Execution**: Handles complex system commands securely and ensures error-free execution by validating inputs and outputs.
+2. **Database-Driven Logic**: Uses the Django ORM to manage interfaces and maintain history, including fields for original and last-changed MAC addresses.
+3. **Real-Time Updates**: Displays network interfaces and their states dynamically, with AJAX calls for fetching interface data and generating MAC addresses.
+4. **Error Handling**: Provides real-time feedback for errors such as invalid MAC addresses or command execution issues, enhancing user reliability.
+5. **Scalability**: Lays the groundwork for adding more security tools as Django apps, making it a modular and extensible framework.
 
 ---
 
 ## File Contents
 
-### `network_tools/`
+### Project Root
 
-- **`manage.py`**: The command-line utility for managing this Django project.
+- **`.gitignore`**: Excludes unnecessary files from version control, such as `db.sqlite3` and `__pycache__`.
+- **`README.md`**: Comprehensive project documentation.
+- **`requirements.txt`**: Lists Python dependencies required for the project.
 
-### `mac_changer/`
+### `mac_address_changer/`
 
-- **`models.py`**: Contains the `MacAddressHistory` and `Interface` models for tracking MAC addresses and interfaces.
-- **`views.py`**: Implements the core logic for generating, changing, reverting MAC addresses, and rendering the interface list.
-- **`urls.py`**: Maps URLs to their corresponding views.
-- **`forms.py`**: Defines forms for user input (e.g., MAC address and interface selection).
-- **`admin.py`**: Registers models with the Django admin interface for easy management.
-- **`tests.py`**: Includes unit tests to ensure functionality such as MAC validation and random MAC generation.
-- **`templates/mac_changer/index.html`**: The main HTML template for the application.
-- **`static/css/styles.css`**: Custom CSS for styling the web interface.
+- **`models.py`**: Defines models to store interface details, including fields for `original_mac`, `mac_address`, and `last_changed`.
+- **`views.py`**: Implements functionality for:
+  - Viewing network interfaces.
+  - Changing and reverting MAC addresses.
+  - Generating random MAC addresses.
+  - Handling error cases and user feedback.
+- **`urls.py`**: Maps URLs to the appropriate views.
+- **`tests.py`**: Unit tests covering:
+  - MAC address validation.
+  - Generating unique MAC addresses.
+  - Changing and reverting MAC addresses.
+  - Handling edge cases (e.g., missing original MAC).
+- **`templates/mac_changer/index.html`**: The main HTML template for the application, providing a responsive and intuitive user interface.
+- **`static/css/styles.css`**: Custom CSS for styling the application.
+- **`admin.py`**: Registers models for use in the Django admin interface.
 
 ---
 
 ## How to Run the Application
 
-1. Clone the repository:
+### 1. Clone the Repository
+```bash
+git clone https://github.com/razorboy73/django-security-tools
+cd django-security-tools
+```
 
-   git clone https://github.com/razorboy73/django-security-tools
-   cd django-security-tools
-   Set up a Python virtual environment:
-   python3 -m venv venv
-   source venv/bin/activate # On Windows: venv\Scripts\activate
+### 2. Set Up a Python Virtual Environment
+```bash
+python3 -m venv venv
+source venv/bin/activate   # On Windows: venv\Scripts\activate
+```
 
-2. Install dependencies:
-   pip install -r requirements.txt
-3. Apply database migrations
-   python manage.py makemigrations
-   python manage.py migrate
-4. Run the development server:
-   python manage.py runserver
-   Open your browser and navigate to http://127.0.0.1:8000/ to access the application.
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Apply Database Migrations
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### 5. Run the Development Server
+```bash
+python manage.py runserver
+```
+
+### 6. Access the Application
+Open your browser and navigate to:
+```
+http://127.0.0.1:8000/
+```
+
+---
+
+## Testing the Application
+
+### Run Unit Tests
+To ensure the application is functioning correctly, run:
+```bash
+python manage.py test
+```
+
+Expected Output:
+```
+Ran 7 tests in 0.123s
+OK
+```
+
+### Manual Testing:
+1. **View Interfaces**:
+   - Click the "Find Network Interfaces" button.
+   - Verify the list of interfaces and their MAC addresses.
+
+2. **Generate a Random MAC**:
+   - Click the "Generate MAC" button and confirm the generated address is valid.
+
+3. **Change MAC Address**:
+   - Select an interface, enter a valid MAC address, and click "Change MAC".
+   - Confirm the MAC address is updated in the database and on the interface.
+
+4. **Revert MAC Address**:
+   - Click "Revert to Original MAC".
+   - Verify the MAC address reverts to the original value.
+
+---
+
+## Future Improvements
+
+1. Add support for additional network tools (e.g., IP address configuration, firewall settings).
+2. Enhance error handling for specific system environments (e.g., Windows vs. Linux).
+3. Implement user authentication for secure access to the tools.
+

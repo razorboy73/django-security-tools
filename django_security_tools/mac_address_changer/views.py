@@ -1,126 +1,214 @@
 from django.shortcuts import render, redirect
+from django.utils.timezone import now
 from django.http import JsonResponse
 from django.contrib import messages
-from .models import MacAddressHistory, Interface
+from .models import Interface
 import subprocess
 import random
 import re
 
+
 def index(request):
+    """
+    Renders the main page with a list of available network interfaces.
+    """
     interfaces = Interface.objects.all()
     return render(request, "mac_address_changer/index.html", {"interfaces": interfaces})
 
 
 def find_interfaces(request):
     """
-    Returns a list of active network interfaces with their current MAC addresses.
+    Finds and returns active network interfaces with their current MAC addresses.
     Updates the Interface table in the database.
     """
     try:
-        # Get the output of ifconfig
         result = subprocess.check_output(['ifconfig'], stderr=subprocess.STDOUT).decode('utf-8')
-
-        # Log the raw output for debugging
         print("Raw ifconfig output:\n", result)
 
-        # Parse interface names and MAC addresses
+        interface_blocks = result.split('\n\n')
         interfaces = []
-        # Updated regex: Matches all interfaces and optionally captures MAC addresses
-        regex = r'^(\w+): flags=.*?\n(?:.*\n)*?(?:\s+ether\s+([0-9a-fA-F:]{17}))?'
+        for block in interface_blocks:
+            name_match = re.match(r'^(\w+):', block)
+            if not name_match:
+                continue
+            interface_name = name_match.group(1)
+            mac_match = re.search(r'ether\s+([0-9a-fA-F:]{17})', block)
+            mac_address = mac_match.group(1) if mac_match else "No MAC Address"
 
-        for match in re.finditer(regex, result, re.MULTILINE):
-            interface_name = match.group(1)  # Extract interface name
-            mac_address = match.group(2) if match.group(2) else "No MAC Address"  # Extract MAC or set as "No MAC Address"
-
-            # Update or create the Interface in the database
-            Interface.objects.update_or_create(
+            interface, created = Interface.objects.update_or_create(
                 name=interface_name,
                 defaults={'original_mac': mac_address, 'mac_address': mac_address}
             )
             interfaces.append({'name': interface_name, 'mac': mac_address})
 
-        # Log the parsed interfaces for debugging
         print("Parsed interfaces:", interfaces)
-
-        # User instructions
         instructions = "Click on a network interface below to select it for MAC address changes."
 
         return JsonResponse({'interfaces': interfaces, 'instructions': instructions})
-
     except subprocess.CalledProcessError as e:
         error_message = f"Error fetching interfaces: {str(e)}"
-        print(error_message)  # Log the error
+        print(error_message)
         return JsonResponse({'error': error_message}, status=500)
-
     except Exception as e:
         error_message = f"Unexpected error: {str(e)}"
-        print(error_message)  # Log the error
+        print(error_message)
         return JsonResponse({'error': error_message}, status=500)
-    
-    
-def generate_mac(request):
-    new_mac = ":".join(f"{random.randint(0, 255):02x}" for _ in range(6))
-    MacAddressHistory.objects.create(mac_address=new_mac)
-    return JsonResponse({"mac_address": new_mac})
+
+
+def validate_mac(mac):
+    """
+    Validates the MAC address format.
+    """
+    pattern = r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
+    return re.match(pattern, mac) is not None
+
+
+def ensure_interface_up(interface):
+    """
+    Ensures the specified interface is up.
+    """
+    try:
+        subprocess.run(["ip", "link", "set", interface, "up"], check=True)
+        print(f"Interface {interface} is now up.")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Error bringing up interface {interface}: {e}")
+
+
+def change_mac_command(interface, mac):
+    """
+    Changes the MAC address for the specified interface.
+    """
+    try:
+        print(f"Changing MAC address for {interface} to {mac}")
+
+        # Ensure the interface is up
+        ensure_interface_up(interface)
+
+        # Bring the interface down
+        subprocess.run(["ip", "link", "set", interface, "down"], check=True)
+
+        # Change the MAC address
+        subprocess.run(["ip", "link", "set", interface, "address", mac], check=True)
+
+        # Bring the interface back up
+        subprocess.run(["ip", "link", "set", interface, "up"], check=True)
+
+        print(f"MAC address for {interface} successfully changed to {mac}")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Error executing ip command: {e}")
+
+
 
 def change_mac(request):
+    """
+    Changes the MAC address for the specified interface.
+    """
     interface_name = request.POST.get("interface")
     new_mac = request.POST.get("mac")
 
-    print(f"POST data - interface: {interface_name}, mac: {new_mac}")  # Debugging
+    if not validate_mac(new_mac):
+        messages.error(request, f"Invalid MAC address format: {new_mac}. Please try again.")
+        return redirect("index")
 
-    if not interface_name:
-        messages.error(request, "No interface selected.")
+    try:
+        # Get the interface to change
+        interface = Interface.objects.get(name=interface_name)
+
+        # Save the original MAC if it's not already saved
+        if not interface.original_mac:
+            interface.original_mac = interface.mac_address
+
+        # Change the MAC address
+        change_mac_command(interface_name, new_mac)
+
+        # Update the MAC address and set last_changed
+        interface.mac_address = new_mac
+        interface.last_changed = now()
+        interface.save()
+
+        # Reset last_changed for all other interfaces
+        Interface.objects.exclude(name=interface_name).update(last_changed=None)
+
+        messages.success(
+            request,
+            f"MAC address for interface '{interface_name}' successfully changed. "
+            f"Original MAC: {interface.original_mac}, New MAC: {new_mac}."
+        )
+    except Interface.DoesNotExist:
+        messages.error(request, f"Interface '{interface_name}' not found.")
+    except RuntimeError as e:
+        messages.error(request, f"Error: {e}")
+
+    return redirect("index")
+    """
+    Changes the MAC address for the specified interface.
+    """
+    interface_name = request.POST.get("interface")
+    new_mac = request.POST.get("mac")
+
+    if not validate_mac(new_mac):
+        messages.error(request, f"Invalid MAC address format: {new_mac}. Please try again.")
         return redirect("index")
 
     try:
         interface = Interface.objects.get(name=interface_name)
-    except Interface.DoesNotExist:
-        messages.error(request, f"Interface '{interface_name}' not found in the database.")
-        return redirect("index")
-
-    if not validate_mac(new_mac):
-        messages.error(request, "Invalid MAC address format.")
-        return redirect("index")
-
-    try:
-        original_mac = check_interface(interface_name)
-        if not interface.original_mac:
-            interface.original_mac = original_mac
-            interface.save()
-
+        original_mac = interface.mac_address
         change_mac_command(interface_name, new_mac)
-        messages.success(request, f"MAC address changed to {new_mac}.")
-    except Exception as e:
+        interface.mac_address = new_mac
+        interface.save()
+
+        messages.success(
+            request,
+            f"MAC address for interface '{interface_name}' successfully changed. "
+            f"Original MAC: {original_mac}, New MAC: {new_mac}."
+        )
+    except Interface.DoesNotExist:
+        messages.error(request, f"Interface '{interface_name}' not found.")
+    except RuntimeError as e:
         messages.error(request, f"Error: {e}")
 
     return redirect("index")
 
 def revert_mac(request):
-    interface_name = request.POST.get("interface")
-    interface = Interface.objects.get(name=interface_name)
-
+    """
+    Reverts the MAC address for the last changed interface to its original value.
+    """
     try:
-        if not interface.original_mac:
-            raise ValueError("Original MAC address not found.")
+        # Find the last changed interface
+        interface = Interface.objects.filter(last_changed__isnull=False).first()
 
-        change_mac_command(interface_name, interface.original_mac)
-        messages.success(request, f"Reverted back to original MAC: {interface.original_mac}.")
-    except Exception as e:
+        if not interface:
+            raise ValueError("No interface found to revert.")
+
+        if not interface.original_mac:
+            raise ValueError(f"Original MAC address not found for interface '{interface.name}'.")
+
+        # Revert the MAC address
+        change_mac_command(interface.name, interface.original_mac)
+
+        # Update the database
+        interface.mac_address = interface.original_mac
+        interface.last_changed = None
+        interface.save()
+
+        messages.success(
+            request,
+            f"Reverted MAC address for interface '{interface.name}' to original value: {interface.original_mac}."
+        )
+    except ValueError as e:
+        messages.error(request, f"Error: {e}")
+    except RuntimeError as e:
         messages.error(request, f"Error: {e}")
 
     return redirect("index")
 
-# Utility functions for subprocess handling
-def validate_mac(mac):
-    pattern = r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
-    return re.match(pattern, mac) is not None
 
-def check_interface(interface):
-    result = subprocess.check_output(["ifconfig", interface]).decode("utf-8")
-    return re.search(r"ether ([0-9a-fA-F:]{17})", result).group(1)
 
-def change_mac_command(interface, mac):
-    subprocess.run(["ifconfig", interface, "down"], check=True)
-    subprocess.run(["ifconfig", interface, "hw", "ether", mac], check=True)
-    subprocess.run(["ifconfig", interface, "up"], check=True)
+
+def generate_mac(request):
+    """
+    Generates a valid, locally administered MAC address and returns it as a JSON response.
+    """
+    new_mac = "02:" + ":".join(f"{random.randint(0, 255):02x}" for _ in range(5))
+    print(f"Generated MAC address: {new_mac}")
+    return JsonResponse({"mac_address": new_mac})
