@@ -1,92 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAC Address Changer</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 
 <body>
-    <h1>MAC Address Changer</h1>
+    <div class="container">
+        <!-- Page Header -->
+        <h1>MAC Address Changer</h1>
 
-    <!-- Button to Find Network Interfaces -->
-    <button type="button" onclick="findInterfaces()">Find Network Interfaces</button>
-    <!-- User Instructions -->
-    <p id="instructions-container">Click the "Find Network Interfaces" button to find all the active network interfaces on your computer.</p>
-    
-    <!-- Placeholder to Display Found Interfaces -->
-    <div id="interfaces-container">
-        <!-- Dynamically populated by JavaScript -->
+        <!-- Message Container -->
+        <div id="message-container">
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-error{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Find Network Interfaces Section -->
+        <form onsubmit="event.preventDefault(); findInterfaces();">
+            <h2>Step 1: Find Network Interfaces</h2>
+            <p>Click the "Find Network Interfaces" button to display all active interfaces on your system.</p>
+            <button type="submit">Find Network Interfaces</button>
+        </form>
+        <!-- Display Network Interfaces -->
+        {% if interfaces %}
+        <div id="interface-list">
+            <h2>Available Network Interfaces</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Interface Name</th>
+                        <th>MAC Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamically updated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Change MAC Address Section -->
+        <form method="POST" action="{% url 'change_mac' %}">
+            {% csrf_token %}
+            <h2>Step 2: Change MAC Address</h2>
+            <label for="interface">Select Interface:</label>
+            <select name="interface" id="interface" required>
+                <option value="" disabled selected>Select an interface</option>
+                {% for interface in interfaces %}
+                <option value="{{ interface.name }}">{{ interface.name }}</option>
+                {% endfor %}
+            </select>
+            <label for="mac">New MAC Address:</label>
+            <input type="text" id="mac" name="mac" placeholder="Enter new MAC address">
+            <button type="button" onclick="generateMac()">Generate MAC</button>
+            <button type="submit">Change MAC</button>
+        </form>
+
+        <!-- Revert to Original MAC Section -->
+        <form method="POST" action="{% url 'revert_mac' %}">
+            {% csrf_token %}
+            <h2>Step 3: Revert to Original MAC Address</h2>
+            <p>This will revert the last modified interface to its original MAC address.</p>
+            <button type="submit" class="secondary-button">Revert to Original MAC</button>
+        </form>
     </div>
 
-    <!-- Form to Change MAC Address -->
-    <form method="POST" action="{% url 'change_mac' %}">
-        {% csrf_token %}
-        <label for="interface">Selected Interface:</label>
-        <input type="text" id="interface" name="interface" readonly placeholder="Select an interface above">
-        <label for="mac">New MAC Address:</label>
-        <input type="text" id="mac" name="mac">
-        <button type="button" onclick="generateMac()">Generate MAC</button>
-        <button type="submit">Change MAC</button>
-    </form>
+    <!-- Footer -->
+    <footer>
+        &copy; 2024 Django Security Tools. Developed by <a href="https://www.linkedin.com/in/joshkerbel/">Josh Kerbel</a>.
+    </footer>
 
-    <!-- Form to Revert MAC Address -->
-    <form method="POST" action="{% url 'revert_mac' %}">
-        {% csrf_token %}
-        <button type="submit">Revert to Original MAC Address</button>
-    </form>
-
-    
-    <!-- Container for Alerts and Messages -->
-    <div id="message-container">
-        {% for message in messages %}
-        <div class="alert">{{ message }}</div>
-        {% endfor %}
-    </div>
-
+    <!-- JavaScript for Generating MAC -->
     <script>
-        // Function to Find Network Interfaces
-        function findInterfaces() {
-            fetch("{% url 'find_interfaces' %}")
-                .then(response => response.json())
-                .then(data => {
-                    const instructionsContainer = document.getElementById('instructions-container');
-                    const container = document.getElementById('interfaces-container');
-                    instructionsContainer.innerHTML = data.instructions || ''; // Display instructions
-                    container.innerHTML = ''; // Clear previous results
-
-                    if (data.error) {
-                        container.innerHTML = `<p class="error">${data.error}</p>`;
-                    } else {
-                        data.interfaces.forEach(item => {
-                            const button = document.createElement('button');
-                            button.innerText = `${item.name} - ${item.mac}`;
-                            button.onclick = (e) => {
-                                e.preventDefault();
-                                selectInterface(item.name);
-                            };
-                            container.appendChild(button);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching interfaces:', error);
-                });
-        }
-
-        // Function to Populate Selected Interface
-        function selectInterface(interfaceName) {
-            document.getElementById('interface').value = interfaceName;
-               }
-
-        // Function to Generate a Random MAC Address
         function generateMac() {
             fetch("{% url 'generate_mac' %}")
                 .then(response => response.json())
-                .then(data => document.getElementById('mac').value = data.mac_address)
-                .catch(error => console.error('Error generating MAC:', error));
+                .then(data => {
+                    document.getElementById('mac').value = data.mac_address;
+                })
+                .catch(error => {
+                    alert("Error generating MAC address: " + error);
+                });
         }
+
+        function findInterfaces() {
+        fetch("{% url 'find_interfaces' %}")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Error fetching network interfaces.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    updateInterfaceList(data.interfaces);
+                }
+            })
+            .catch(error => {
+                alert("An error occurred: " + error.message);
+            });
+    }
+
+    function updateInterfaceList(interfaces) {
+        const tableBody = document.querySelector("#interface-list tbody");
+        tableBody.innerHTML = ""; // Clear existing rows
+
+        interfaces.forEach(interface => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${interface.name}</td>
+                <td>${interface.mac}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
     </script>
 </body>
 

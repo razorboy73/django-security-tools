@@ -15,44 +15,22 @@ def index(request):
     interfaces = Interface.objects.all()
     return render(request, "mac_address_changer/index.html", {"interfaces": interfaces})
 
-
 def find_interfaces(request):
     """
-    Finds and returns active network interfaces with their current MAC addresses.
-    Updates the Interface table in the database.
+    Returns a list of active network interfaces with their current MAC addresses.
     """
     try:
         result = subprocess.check_output(['ifconfig'], stderr=subprocess.STDOUT).decode('utf-8')
-        print("Raw ifconfig output:\n", result)
-
-        interface_blocks = result.split('\n\n')
         interfaces = []
-        for block in interface_blocks:
-            name_match = re.match(r'^(\w+):', block)
-            if not name_match:
-                continue
-            interface_name = name_match.group(1)
-            mac_match = re.search(r'ether\s+([0-9a-fA-F:]{17})', block)
-            mac_address = mac_match.group(1) if mac_match else "No MAC Address"
+        regex = r'^(\w+): flags=.*?\n(?:.*\n)*?\s+ether\s+([0-9a-fA-F:]{17})'
+        for match in re.finditer(regex, result, re.MULTILINE):
+            interfaces.append({'name': match.group(1), 'mac': match.group(2)})
 
-            interface, created = Interface.objects.update_or_create(
-                name=interface_name,
-                defaults={'original_mac': mac_address, 'mac_address': mac_address}
-            )
-            interfaces.append({'name': interface_name, 'mac': mac_address})
-
-        print("Parsed interfaces:", interfaces)
-        instructions = "Click on a network interface below to select it for MAC address changes."
-
-        return JsonResponse({'interfaces': interfaces, 'instructions': instructions})
-    except subprocess.CalledProcessError as e:
-        error_message = f"Error fetching interfaces: {str(e)}"
-        print(error_message)
-        return JsonResponse({'error': error_message}, status=500)
+        return JsonResponse({'interfaces': interfaces, 'instructions': "Select an interface to proceed."})
     except Exception as e:
-        error_message = f"Unexpected error: {str(e)}"
-        print(error_message)
-        return JsonResponse({'error': error_message}, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 
 
 def validate_mac(mac):
