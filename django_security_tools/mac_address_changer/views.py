@@ -14,29 +14,38 @@ def index(request):
 def find_interfaces(request):
     """
     Returns a list of active network interfaces with their current MAC addresses.
-    Logs the raw output of ifconfig for debugging.
+    Updates the Interface table in the database.
     """
     try:
         # Get the output of ifconfig
         result = subprocess.check_output(['ifconfig'], stderr=subprocess.STDOUT).decode('utf-8')
-        
+
         # Log the raw output for debugging
         print("Raw ifconfig output:\n", result)
 
         # Parse interface names and MAC addresses
         interfaces = []
-        # Updated regex based on provided ifconfig output
-        regex = r'^(\w+): flags=.*?\n(?:.*\n)*?\s+ether\s+([0-9a-fA-F:]{17})'
+        # Updated regex: Matches all interfaces and optionally captures MAC addresses
+        regex = r'^(\w+): flags=.*?\n(?:.*\n)*?(?:\s+ether\s+([0-9a-fA-F:]{17}))?'
 
         for match in re.finditer(regex, result, re.MULTILINE):
             interface_name = match.group(1)  # Extract interface name
-            mac_address = match.group(2)    # Extract MAC address
+            mac_address = match.group(2) if match.group(2) else "No MAC Address"  # Extract MAC or set as "No MAC Address"
+
+            # Update or create the Interface in the database
+            Interface.objects.update_or_create(
+                name=interface_name,
+                defaults={'original_mac': mac_address, 'mac_address': mac_address}
+            )
             interfaces.append({'name': interface_name, 'mac': mac_address})
 
         # Log the parsed interfaces for debugging
         print("Parsed interfaces:", interfaces)
-        
-        return JsonResponse({'interfaces': interfaces})
+
+        # User instructions
+        instructions = "Click on a network interface below to select it for MAC address changes."
+
+        return JsonResponse({'interfaces': interfaces, 'instructions': instructions})
 
     except subprocess.CalledProcessError as e:
         error_message = f"Error fetching interfaces: {str(e)}"
@@ -47,8 +56,8 @@ def find_interfaces(request):
         error_message = f"Unexpected error: {str(e)}"
         print(error_message)  # Log the error
         return JsonResponse({'error': error_message}, status=500)
-
-
+    
+    
 def generate_mac(request):
     new_mac = ":".join(f"{random.randint(0, 255):02x}" for _ in range(6))
     MacAddressHistory.objects.create(mac_address=new_mac)
@@ -57,7 +66,18 @@ def generate_mac(request):
 def change_mac(request):
     interface_name = request.POST.get("interface")
     new_mac = request.POST.get("mac")
-    interface = Interface.objects.get(name=interface_name)
+
+    print(f"POST data - interface: {interface_name}, mac: {new_mac}")  # Debugging
+
+    if not interface_name:
+        messages.error(request, "No interface selected.")
+        return redirect("index")
+
+    try:
+        interface = Interface.objects.get(name=interface_name)
+    except Interface.DoesNotExist:
+        messages.error(request, f"Interface '{interface_name}' not found in the database.")
+        return redirect("index")
 
     if not validate_mac(new_mac):
         messages.error(request, "Invalid MAC address format.")

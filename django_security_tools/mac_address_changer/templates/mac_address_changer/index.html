@@ -12,12 +12,15 @@
 
     <!-- Button to Find Network Interfaces -->
     <button type="button" onclick="findInterfaces()">Find Network Interfaces</button>
+    <!-- User Instructions -->
+    <p id="instructions-container">Click the "Find Network Interfaces" button to find all the active network interfaces on your computer.</p>
     
     <!-- Placeholder to Display Found Interfaces -->
     <div id="interfaces-container">
         <!-- Dynamically populated by JavaScript -->
     </div>
 
+    <!-- Form to Change MAC Address -->
     <form method="POST" action="{% url 'change_mac' %}">
         {% csrf_token %}
         <label for="interface">Selected Interface:</label>
@@ -27,7 +30,8 @@
         <button type="button" onclick="generateMac()">Generate MAC</button>
         <button type="submit">Change MAC</button>
     </form>
-    
+
+    <!-- Form to Revert MAC Address -->
     <form method="POST" action="{% url 'revert_mac' %}">
         {% csrf_token %}
         <label for="revert_interface">Revert Interface:</label>
@@ -35,6 +39,7 @@
         <button type="submit">Revert to Original MAC</button>
     </form>
 
+    <!-- Container for Alerts and Messages -->
     <div id="message-container">
         {% for message in messages %}
         <div class="alert">{{ message }}</div>
@@ -42,21 +47,26 @@
     </div>
 
     <script>
-        // Function to Find Network Interfaces and MAC Addresses
+        // Function to Find Network Interfaces
         function findInterfaces() {
             fetch("{% url 'find_interfaces' %}")
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data)
+                    const instructionsContainer = document.getElementById('instructions-container');
                     const container = document.getElementById('interfaces-container');
+                    instructionsContainer.innerHTML = data.instructions || ''; // Display instructions
                     container.innerHTML = ''; // Clear previous results
+
                     if (data.error) {
                         container.innerHTML = `<p class="error">${data.error}</p>`;
                     } else {
                         data.interfaces.forEach(item => {
                             const button = document.createElement('button');
                             button.innerText = `${item.name} - ${item.mac}`;
-                            button.onclick = () => selectInterface(item.name);
+                            button.onclick = (e) => {
+                                e.preventDefault();
+                                selectInterface(item.name);
+                            };
                             container.appendChild(button);
                         });
                     }
@@ -69,8 +79,7 @@
         // Function to Populate Selected Interface
         function selectInterface(interfaceName) {
             document.getElementById('interface').value = interfaceName;
-            document.getElementById('revert_interface').value = interfaceName;
-        }
+               }
 
         // Function to Generate a Random MAC Address
         function generateMac() {
