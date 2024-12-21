@@ -75,6 +75,6 @@ These factors together demonstrate the distinctiveness and complexity of the pro
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/django-mac-changer.git
-   cd django-mac-changer
+   git clone https://github.com/razorboy73/django-security-tools
+   cd django-security-tools
    ```
