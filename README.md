@@ -15,11 +15,11 @@ A collection of network security and hacking tools written in Python and running
 - **`requirements.txt`**: Lists all Python dependencies required to run the project.
 
 These tools include the following applications:
-**Django MAC Address Changer**
+**MAC Address Changer**
 
-**Django MAC Address Changer**
+**MAC Address Changer**
 
-The **Django MAC Address Changer** is a sophisticated, Django-based web application designed for network engineers to manage and modify the Media Access Control (MAC) addresses of their devices seamlessly. This tool is part of a broader suite of network security and engineering tools, developed to run locally and assist in everyday network management tasks.
+The **MAC Address Changer** is a sophisticated, Django-based web application designed for network engineers to manage and modify the Media Access Control (MAC) addresses of their devices seamlessly. This tool is part of a broader suite of network security and engineering tools, developed to run locally and assist in everyday network management tasks.
 
 The application enables users to:
 
@@ -74,7 +74,18 @@ These factors together demonstrate the distinctiveness and complexity of the pro
 ## How to Run the Application
 
 1. Clone the repository:
-   ```bash
+
    git clone https://github.com/razorboy73/django-security-tools
    cd django-security-tools
-   ```
+   Set up a Python virtual environment:
+   python3 -m venv venv
+   source venv/bin/activate # On Windows: venv\Scripts\activate
+
+2. Install dependencies:
+   pip install -r requirements.txt
+3. Apply database migrations
+   python manage.py makemigrations
+   python manage.py migrate
+4. Run the development server:
+   python manage.py runserver
+   Open your browser and navigate to http://127.0.0.1:8000/ to access the application.
