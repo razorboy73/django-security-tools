@@ -4,10 +4,50 @@ from django.contrib import messages
 from .models import MacAddressHistory, Interface
 import subprocess
 import random
+import re
 
 def index(request):
     interfaces = Interface.objects.all()
     return render(request, "mac_address_changer/index.html", {"interfaces": interfaces})
+
+
+def find_interfaces(request):
+    """
+    Returns a list of active network interfaces with their current MAC addresses.
+    Logs the raw output of ifconfig for debugging.
+    """
+    try:
+        # Get the output of ifconfig
+        result = subprocess.check_output(['ifconfig'], stderr=subprocess.STDOUT).decode('utf-8')
+        
+        # Log the raw output for debugging
+        print("Raw ifconfig output:\n", result)
+
+        # Parse interface names and MAC addresses
+        interfaces = []
+        # Updated regex based on provided ifconfig output
+        regex = r'^(\w+): flags=.*?\n(?:.*\n)*?\s+ether\s+([0-9a-fA-F:]{17})'
+
+        for match in re.finditer(regex, result, re.MULTILINE):
+            interface_name = match.group(1)  # Extract interface name
+            mac_address = match.group(2)    # Extract MAC address
+            interfaces.append({'name': interface_name, 'mac': mac_address})
+
+        # Log the parsed interfaces for debugging
+        print("Parsed interfaces:", interfaces)
+        
+        return JsonResponse({'interfaces': interfaces})
+
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error fetching interfaces: {str(e)}"
+        print(error_message)  # Log the error
+        return JsonResponse({'error': error_message}, status=500)
+
+    except Exception as e:
+        error_message = f"Unexpected error: {str(e)}"
+        print(error_message)  # Log the error
+        return JsonResponse({'error': error_message}, status=500)
+
 
 def generate_mac(request):
     new_mac = ":".join(f"{random.randint(0, 255):02x}" for _ in range(6))
