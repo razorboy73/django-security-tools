@@ -1,14 +1,20 @@
-# Django Framework
-Django==4.2.5
+# Core Django framework
+Django==4.2.5  # Replace with your specific version if needed
 
-# Network Scanning and Packet Manipulation
-scapy==2.5.0
+# Networking and packet crafting library
+scapy==2.5.0  # Replace with the version of Scapy you're using
 
-# Additional Libraries for Functionality and Performance
-requests==2.31.0  # For potential external API integrations
-django-widget-tweaks==1.4.12  # For better form rendering and customization
+# Testing and mocking
+pytest==7.2.2  # Pytest for advanced testing features
+pytest-django==4.5.2  # Django plugin for Pytest
+mock==5.0.1  # For mocking in tests
 
-# Development and Testing Tools
-pytest-django==4.5.2
-pytest==7.4.0
-django-debug-toolbar==4.1.0  # Debugging and performance analysis
+# Database dependencies (if using PostgreSQL)
+psycopg2-binary==2.9.6  # PostgreSQL database adapter for Django
+
+# Linting and code quality
+flake8==6.0.0  # Python linting
+black==23.7.0  # Code formatter
+
+# Other utility libraries
+ipaddress==1.0.23  # For IP address validation (if not included in Python 3.x)
