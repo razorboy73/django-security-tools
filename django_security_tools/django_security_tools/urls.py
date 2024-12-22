@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django_security_tools.views import home_view  # Correctly import the home view
+
 """
 URL configuration for django_security_tools project.
 
@@ -16,14 +18,12 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path, include
-from django.views.generic import TemplateView
+
+
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path('', include('mac_address_changer.urls')),  # Include your app's URLs
-    path('', TemplateView.as_view(template_name="home.html"), name='home'),
-    path('network_scanner/', include('network_scanner.urls')),
-
+    path('', home_view, name='home'),  # Home page route
+    path('mac_address_changer/', include('mac_address_changer.urls')),  # MAC Address Changer URLs
+    path('network_scanner/', include('network_scanner.urls')),  # Network Scanner URLs
+    path('admin/', admin.site.urls),  # Admin site
 ]

@@ -7,6 +7,12 @@ import json
 import ipaddress
 from scapy.all import ARP, Ether, srp
 
+
+def index(request):
+    return render(request, 'network_scanner/index.html')
+
+
+
 def network_scanner_view(request):
     results = None
     error = None

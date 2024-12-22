@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Django Security Tools</title>
+</head>
+<body>
+    <header>
+        <h1>Welcome to Django Security Tools</h1>
+        <p>Select an application below to get started:</p>
+    </header>
+    <main>
+        <ul>
+            <a href="{% url 'mac_address_changer:index' %}">MAC Address Changer</a>
+
+            {% for app in applications %}
+            <li>
+                <a href="{{ app.url }}">{{ app.name }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </main>
+    <footer>
+        <p>&copy; 2024 Django Security Tools. All rights reserved.</p>
+    </footer>
+</body>
+</html>

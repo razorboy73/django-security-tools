@@ -1,6 +1,9 @@
 from django.urls import path
 from . import views
 
+
+app_name = 'mac_address_changer'
+
 urlpatterns = [
     path("", views.index, name="index"),
     path('find-interfaces/', views.find_interfaces, name='find_interfaces'),
