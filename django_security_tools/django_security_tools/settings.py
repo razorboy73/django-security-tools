@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'network_scanner',
     "mac_address_changer",
     "django.contrib.admin",
     "django.contrib.auth",

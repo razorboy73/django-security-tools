@@ -1,0 +1,38 @@
+{% extends "network_scanner/base.html" %}
+{% block title %}Scan History{% endblock %}
+
+{% block content %}
+<h1>Scan History</h1>
+
+{% if logs %}
+<table>
+    <thead>
+        <tr>
+            <th>IP Range</th>
+            <th>Scanned At</th>
+            <th>Results</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.ip_range }}</td>
+            <td>{{ log.scanned_at }}</td>
+            <td>
+                <a href="#" onclick="toggleDetails('details-{{ forloop.counter }}'); return false;">View Details</a>
+                <pre id="details-{{ forloop.counter }}" style="display: none;">{{ log.results|safe }}</pre>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script>
+    function toggleDetails(id) {
+        const el = document.getElementById(id);
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+</script>
+{% else %}
+<p>No scan history available.</p>
+{% endif %}
+{% endblock %}

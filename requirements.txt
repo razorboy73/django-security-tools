@@ -1,0 +1,14 @@
+# Django Framework
+Django==4.2.5
+
+# Network Scanning and Packet Manipulation
+scapy==2.5.0
+
+# Additional Libraries for Functionality and Performance
+requests==2.31.0  # For potential external API integrations
+django-widget-tweaks==1.4.12  # For better form rendering and customization
+
+# Development and Testing Tools
+pytest-django==4.5.2
+pytest==7.4.0
+django-debug-toolbar==4.1.0  # Debugging and performance analysis

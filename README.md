@@ -1,3 +1,7 @@
+Here's the updated **README.md** with the addition of the **Network Scanner** application:
+
+---
+
 # Django Security Tools
 
 #### Video Demo: <URL HERE>
@@ -8,11 +12,13 @@
 
 **Django Security Tools** is a suite of network security and engineering tools designed to provide network engineers with a web-based interface for essential network operations. Built on Django, this project combines high-level web frameworks with low-level system operations for seamless and efficient management.
 
-The first tool in this suite is the **MAC Address Changer**, which allows users to manage and modify MAC addresses of their network interfaces with ease.
+The project currently includes the following tools:
+1. **MAC Address Changer**: A utility for managing and modifying MAC addresses of network interfaces.
+2. **Network Scanner**: A tool to discover devices on a network, displaying their IP and MAC addresses.
 
 ---
 
-### Features of **MAC Address Changer**:
+## Features of **MAC Address Changer**
 
 1. **View Network Interfaces**:
    - Displays all active network interfaces, their names, and current MAC addresses.
@@ -29,39 +35,54 @@ The first tool in this suite is the **MAC Address Changer**, which allows users 
 
 ---
 
+## Features of **Network Scanner**
+
+1. **Discover Devices on the Network**:
+   - Sends ARP requests to a specified IP range and identifies active devices.
+2. **Display IP and MAC Addresses**:
+   - Lists the IP and MAC addresses of devices discovered during the scan.
+3. **Track Scan History**:
+   - Logs IP ranges scanned along with results and timestamps for future reference.
+4. **Interactive Scan History Viewer**:
+   - Provides a detailed view of past scan results with collapsible data for improved readability.
+5. **Intuitive User Interface**:
+   - Features simple forms for inputting IP ranges and dynamically updates scan results.
+
+---
+
 ## Recent Updates
 
-- **Enhanced Revert Functionality**:
+- **Added Network Scanner Tool**:
+  - Integrated ARP-based network scanning with a web interface.
+  - Tracks and logs scan results in the database for historical reference.
+  - Developed an interactive scan history viewer with collapsible details.
+- **Enhanced Revert Functionality in MAC Address Changer**:
   - Automatically reverts the last modified interface without requiring manual input.
 - **Improved Error Handling**:
   - Validates MAC address formats, ensures interfaces are up before modifications, and handles command execution errors gracefully.
-- **Dynamic Interface Updates**:
-  - Fetches and displays active network interfaces dynamically using AJAX, ensuring up-to-date data without refreshing the page.
-- **Comprehensive Unit Tests**:
-  - Expanded test cases to cover error handling, system command execution, and edge cases.
 
 ---
 
 ## Distinctiveness and Complexity
 
-### Distinctiveness:
+### Distinctiveness
 
-This project uniquely integrates operating system-level network operations with Django, offering a high-level abstraction for low-level commands. Unlike traditional Django applications that focus on database CRUD operations or static content management, this project executes real-time system-level modifications, bridging the gap between web development and network engineering.
+This project uniquely integrates operating system-level network operations with Django, offering a high-level abstraction for low-level commands. Unlike traditional Django applications that focus on database CRUD operations or static content management, this project executes real-time system-level modifications and network scans, bridging the gap between web development and network engineering.
 
 ---
 
-### Complexity:
+### Complexity
 
 1. **System-Level Command Execution**:
-   - Executes commands like `ifconfig` and `ip link` securely using Python’s `subprocess` library, handling complex error scenarios.
+   - Executes commands like `ifconfig`, `ip link`, and ARP requests securely using Python libraries such as `subprocess` and `scapy`.
 2. **Database-Driven State Management**:
-   - Tracks the state of network interfaces, including fields for `original_mac`, `mac_address`, and `last_changed`.
+   - Tracks network operations and scan history with fields for `original_mac`, `mac_address`, `ip_range`, and `results`.
 3. **Dynamic Frontend Interactions**:
-   - Utilizes AJAX for fetching network interfaces and JavaScript for dynamic UI updates.
+   - Utilizes AJAX for real-time data updates and JavaScript for dynamic UI changes.
 4. **Robust Validation**:
-   - Ensures MAC addresses are valid and prevents invalid changes from being applied to network interfaces.
-5. **Reversibility**:
-   - Tracks and reverts MAC address changes, ensuring no permanent alterations unless explicitly requested.
+   - Ensures valid MAC addresses and IP ranges before executing operations.
+5. **Reversibility and History Tracking**:
+   - Tracks and reverts MAC address changes and logs network scans for future reference.
 
 ---
 
@@ -79,15 +100,18 @@ This project uniquely integrates operating system-level network operations with 
 - **`views.py`**: Contains logic for:
   - Viewing and managing network interfaces.
   - Changing, reverting, and generating MAC addresses.
-  - Providing real-time feedback and error handling.
 - **`urls.py`**: Maps URLs to their corresponding views.
-- **`templates/mac_changer/index.html`**: The primary HTML template for the application, including AJAX integration for dynamic updates.
+- **`templates/mac_changer/index.html`**: The primary HTML template for the application.
 - **`static/css/styles.css`**: Custom CSS for a clean and responsive design.
-- **`admin.py`**: Registers the `Interface` model for use in Django’s admin interface.
-- **`tests.py`**: Includes comprehensive test cases covering:
-  - Validation of MAC addresses.
-  - Command execution and error handling.
-  - User interactions with the application.
+
+### `network_scanner/`
+
+- **`models.py`**: Defines the `ScanLog` model for tracking scan history and results.
+- **`views.py`**: Contains logic for performing network scans and displaying scan history.
+- **`urls.py`**: Maps URLs to their corresponding views.
+- **`templates/network_scanner/network_scanner.html`**: HTML template for the scan input form and results.
+- **`templates/network_scanner/scan_history.html`**: HTML template for viewing scan history.
+- **`scanner.py`**: Implements the ARP-based network scanning logic using `scapy`.
 
 ---
 
@@ -137,35 +161,11 @@ To ensure the application is functioning correctly, execute:
 python manage.py test
 ```
 
-Expected Output:
-```
-Ran 8 tests in 0.345s
-OK
-```
-
 ### Manual Testing:
-1. **View Interfaces**:
-   - Click the "Find Network Interfaces" button to fetch and display the active interfaces.
+1. **Scan the Network**:
+   - Input an IP range (e.g., `192.168.1.1/24`) in the Network Scanner tool and click "Scan".
+   - Verify the displayed IP and MAC addresses.
+2. **View Scan History**:
+   - Navigate to the Scan History page and verify the logged results.
 
-2. **Generate a Random MAC**:
-   - Click the "Generate MAC" button and verify the generated MAC address is valid.
-
-3. **Change MAC Address**:
-   - Select an interface, enter or generate a valid MAC address, and click "Change MAC".
-   - Confirm the MAC address is updated on the selected interface.
-
-4. **Revert MAC Address**:
-   - Click "Revert to Original MAC" to revert the last modified interface to its original address.
-
----
-
-## Future Improvements
-
-1. Expand the suite with additional tools, such as:
-   - IP address configuration.
-   - Port scanning and network monitoring utilities.
-   - Firewall management.
-2. Implement user authentication for enhanced security.
-3. Add support for multiple operating systems (e.g., Windows compatibility).
-4. Provide detailed logs and analytics for network operations.
-
+-
