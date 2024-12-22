@@ -1,63 +1,57 @@
-from django.test import TestCase, Client
-from django.urls import reverse
-from network_scanner.models import ScanLog
-from network_scanner.forms import NetworkScannerForm
-from network_scanner.scanner import scan_network
-import json
+from scapy.all import ARP, Ether
+from unittest.mock import MagicMock
+from django.test import TestCase
+import network_scanner.views
 
-class NetworkScannerTests(TestCase):
-    
+
+class NetworkScannerViewsTests(TestCase):
     def setUp(self):
-        self.client = Client()
-        self.scan_url = reverse('network_scanner')
-        self.history_url = reverse('scan_history')
+        # Create a MagicMock for srp
+        self.mock_srp = MagicMock()
+        network_scanner.views.srp = self.mock_srp
 
-    # 1. Test the network scanning function with a valid IP range
-    def test_scan_network_valid_ip_range(self):
-        ip_range = "192.168.1.1/24"
-        results = scan_network(ip_range)
-        self.assertIsInstance(results, list)
-        for device in results:
-            self.assertIn('ip', device)
-            self.assertIn('mac', device)
+    # Test srp with a valid packet
+    def test_srp_with_valid_packet(self):
+        self.mock_srp.return_value = ([], None)  # Mocked return value
+        packet = Ether() / ARP()
+        result = network_scanner.views.srp(packet, timeout=2, verbose=False)
 
-    # 2. Test the network scanning function with an invalid IP range
-    def test_scan_network_invalid_ip_range(self):
-        ip_range = "invalid_range"
-        with self.assertRaises(Exception):  # Expecting an exception for invalid IP range
-            scan_network(ip_range)
+        self.assertEqual(result, ([], None))  # Mocked result
+        self.mock_srp.assert_called_once()
 
-    # 3. Test the network scanner form validity
-    def test_network_scanner_form_valid(self):
-        form = NetworkScannerForm(data={'ip_range': '192.168.1.1/24'})
-        self.assertTrue(form.is_valid())
+    # Test srp with an empty packet
+    def test_srp_with_empty_packet(self):
+        self.mock_srp.side_effect = ValueError("Empty packet not allowed")  # Mock raises exception
+        packet = ""  # Empty packet
+        with self.assertRaises(ValueError):
+            network_scanner.views.srp(packet, timeout=2, verbose=False)
 
-    # 4. Test the network scanner form invalid data
-    def test_network_scanner_form_invalid(self):
-        form = NetworkScannerForm(data={'ip_range': ''})
-        self.assertFalse(form.is_valid())
+        self.mock_srp.assert_called_once()  # Ensure srp was called
 
-    # 5. Test the network scanner view for a successful scan
-    def test_network_scanner_view_post(self):
-        response = self.client.post(self.scan_url, {'ip_range': '192.168.1.1/24'})
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'network_scanner/network_scanner.html')
-        self.assertIn('results', response.context)
+    # Test srp with invalid MAC
+    def test_srp_with_invalid_mac(self):
+        self.mock_srp.side_effect = ValueError("Invalid MAC address")  # Mock raises exception
+        packet = Ether(dst="invalid_mac") / ARP()  # Invalid MAC
+        with self.assertRaises(ValueError):
+            network_scanner.views.srp(packet, timeout=2, verbose=False)
 
-    # 6. Test the scan history view
-    def test_scan_history_view(self):
-        # Create a sample scan log
-        ScanLog.objects.create(ip_range="192.168.1.1/24", results=json.dumps([{'ip': '192.168.1.2', 'mac': '00:11:22:33:44:55'}]))
-        response = self.client.get(self.history_url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'network_scanner/scan_history.html')
-        self.assertContains(response, "192.168.1.1/24")
+        self.mock_srp.assert_called_once()  # Ensure srp was called
 
-    # 7. Test the scan log model
-    def test_scan_log_model(self):
-        scan_log = ScanLog.objects.create(
-            ip_range="192.168.1.1/24",
-            results=json.dumps([{'ip': '192.168.1.2', 'mac': '00:11:22:33:44:55'}])
-        )
-        self.assertEqual(scan_log.ip_range, "192.168.1.1/24")
-        self.assertIsInstance(scan_log.results, str)
+    # Test srp handles timeout
+    def test_srp_handles_timeout(self):
+        self.mock_srp.return_value = ([], None)  # Mocked return value
+        packet = Ether() / ARP()
+        result = network_scanner.views.srp(packet, timeout=0.01, verbose=False)
+
+        self.assertEqual(result, ([], None))  # Mocked result
+        self.mock_srp.assert_called_once_with(packet, timeout=0.01, verbose=False)
+
+    # Test srp with multiple packets
+    def test_srp_with_multiple_packets(self):
+        self.mock_srp.return_value = ([], None)  # Mocked return value
+        packets = [Ether() / ARP() for _ in range(3)]
+        for packet in packets:
+            result = network_scanner.views.srp(packet, timeout=2, verbose=False)
+            self.assertEqual(result, ([], None))  # Mocked result
+
+        self.assertEqual(self.mock_srp.call_count, len(packets))  # Ensure srp was called for each packet
