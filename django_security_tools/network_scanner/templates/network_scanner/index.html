@@ -1,12 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Scanner</title>
-</head>
-<body>
-    <h1>Network Scanner</h1>
-    <p>Welcome to the Network Scanner application!</p>
-</body>
-</html>
+{% extends "network_scanner/base.html" %}
+{% block title %}Scan Network{% endblock %}
+
+{% block content %}
+<h1>Network Scanner</h1>
+<form method="post" style="margin-bottom: 2rem;">
+    {% csrf_token %}
+    <fieldset>
+        <label for="id_ip_range">Enter IP Range:</label>
+        {{ form.ip_range }}
+        <button type="submit" class="button-primary">Scan</button>
+    </fieldset>
+</form>
+
+{% if results %}
+<h2>Scan Results</h2>
+<table>
+    <thead>
+        <tr>
+            <th>IP Address</th>
+            <th>MAC Address</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for device in results %}
+        <tr>
+            <td>{{ device.ip }}</td>
+            <td>{{ device.mac }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+{% if form.is_bound %}
+<p>No results found. Please check the IP range and try again.</p>
+{% endif %}
+{% endif %}
+{% endblock %}

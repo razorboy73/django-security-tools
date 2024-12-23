@@ -1,21 +1,18 @@
-# network_scanner/views.py
 from django.shortcuts import render
 from .forms import NetworkScannerForm
 from .scanner import scan_network
 from .models import ScanLog
-import json
 import ipaddress
 from scapy.all import ARP, Ether, srp
 
 
 def index(request):
-    return render(request, 'network_scanner/index.html')
-
-
-
-def network_scanner_view(request):
+    """
+    Handles the main index view and network scanning functionality.
+    """
     results = None
     error = None
+
     if request.method == 'POST':
         form = NetworkScannerForm(request.POST)
         if form.is_valid():
@@ -28,18 +25,26 @@ def network_scanner_view(request):
             error = "Invalid form submission"
     else:
         form = NetworkScannerForm()
-    return render(request, 'network_scanner/network_scanner.html', {'form': form, 'results': results, 'error': error})
 
+    return render(request, 'network_scanner/index.html', {
+        'form': form,
+        'results': results,
+        'error': error
+    })
 
 
 def scan_history_view(request):
+    """
+    Displays the scan history logs.
+    """
     logs = ScanLog.objects.all()
     return render(request, 'network_scanner/scan_history.html', {'logs': logs})
 
 
-
-
 def scan_network(ip_range):
+    """
+    Scans the network for active devices in the specified IP range.
+    """
     print("DEBUG: Calling srp 1...")
     try:
         ip_network = ipaddress.ip_network(ip_range, strict=False)

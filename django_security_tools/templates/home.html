@@ -4,6 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to Django Security Tools</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+        }
+        header {
+            background: #35424a;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        main {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        ul li {
+            margin: 10px 0;
+        }
+        ul a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            background: #35424a;
+            color: #fff;
+            border-radius: 5px;
+            text-align: center;
+        }
+        ul a:hover {
+            background: #6c757d;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            background: #35424a;
+            color: #fff;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -12,9 +64,9 @@
     </header>
     <main>
         <ul>
-            <a href="{% url 'mac_address_changer:index' %}">MAC Address Changer</a>
-
-            <a href="{% url 'network_scanner:index' %}">Network Scanner</a>
+            {% for app in applications %}
+            <li><a href="{% url app.url %}">{{ app.name }}</a></li>
+            {% endfor %}
         </ul>
     </main>
     <footer>

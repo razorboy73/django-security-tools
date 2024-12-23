@@ -16,9 +16,10 @@
 </head>
 <body>
     <nav>
-        <a href="{% url 'network_scanner' %}">Scan Network</a>
-        <a href="{% url 'scan_history' %}">Scan History</a>
+        <a href="{% url 'network_scanner:index' %}">Scan Network</a>
+        <a href="{% url 'network_scanner:scan_history' %}">Scan History</a>
     </nav>
+    
     <main>
         {% block content %}
         {% endblock %}
