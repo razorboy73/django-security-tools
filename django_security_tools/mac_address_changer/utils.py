@@ -10,22 +10,23 @@ def validate_mac(mac_address):
     regex = r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
     return bool(re.match(regex, mac_address))
 
-def change_mac_command(interface_name, new_mac):
+def change_mac_command(interface, mac):
     """
-    Executes the system command to change the MAC address.
+    Changes the MAC address for the specified interface.
     """
     try:
-        subprocess.run(
-            ["ifconfig", interface_name, "down"],
-            check=True,
-        )
-        subprocess.run(
-            ["ifconfig", interface_name, "hw", "ether", new_mac],
-            check=True,
-        )
-        subprocess.run(
-            ["ifconfig", interface_name, "up"],
-            check=True,
-        )
+        print(f"Changing MAC address for {interface} to {mac}")
+
+        # Bring the interface down
+        subprocess.run(["sudo", "ip", "link", "set", interface, "down"], check=True)
+
+        # Change the MAC address
+        subprocess.run(["sudo", "ip", "link", "set", interface, "address", mac], check=True)
+
+        # Bring the interface back up
+        subprocess.run(["sudo", "ip", "link", "set", interface, "up"], check=True)
+
+        print(f"MAC address for {interface} successfully changed to {mac}")
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to change MAC address: {e}")
+        raise RuntimeError(f"Error executing ip command: {e}")
+
