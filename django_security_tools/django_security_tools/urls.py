@@ -22,8 +22,8 @@ Including another URLconf
 
 
 urlpatterns = [
-    path('', home_view, name='home'),  # Home page route
-    path('mac_address_changer/', include('mac_address_changer.urls')),  # MAC Address Changer URLs
-    path('network_scanner/', include('network_scanner.urls')),  # Network Scanner URLs
-    path('admin/', admin.site.urls),  # Admin site
+    path('', home_view, name='home'),
+    path('mac_address_changer/', include('mac_address_changer.urls')),
+    path('network_scanner/', include('network_scanner.urls')),
+    path('admin/', admin.site.urls),
 ]

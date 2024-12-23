@@ -118,34 +118,7 @@ def change_mac(request):
         messages.error(request, f"Error: {e}")
 
     return redirect("index")
-    """
-    Changes the MAC address for the specified interface.
-    """
-    interface_name = request.POST.get("interface")
-    new_mac = request.POST.get("mac")
-
-    if not validate_mac(new_mac):
-        messages.error(request, f"Invalid MAC address format: {new_mac}. Please try again.")
-        return redirect("index")
-
-    try:
-        interface = Interface.objects.get(name=interface_name)
-        original_mac = interface.mac_address
-        change_mac_command(interface_name, new_mac)
-        interface.mac_address = new_mac
-        interface.save()
-
-        messages.success(
-            request,
-            f"MAC address for interface '{interface_name}' successfully changed. "
-            f"Original MAC: {original_mac}, New MAC: {new_mac}."
-        )
-    except Interface.DoesNotExist:
-        messages.error(request, f"Interface '{interface_name}' not found.")
-    except RuntimeError as e:
-        messages.error(request, f"Error: {e}")
-
-    return redirect("index")
+    
 
 def revert_mac(request):
     """
@@ -183,10 +156,8 @@ def revert_mac(request):
 
 
 
+
 def generate_mac(request):
-    """
-    Generates a valid, locally administered MAC address and returns it as a JSON response.
-    """
-    new_mac = "02:" + ":".join(f"{random.randint(0, 255):02x}" for _ in range(5))
-    print(f"Generated MAC address: {new_mac}")
-    return JsonResponse({"mac_address": new_mac})
+    # Generate a random MAC address
+    mac_address = ":".join(f"{random.randint(0, 255):02x}" for _ in range(6))
+    return JsonResponse({'mac_address': mac_address})

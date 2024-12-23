@@ -56,7 +56,7 @@ ROOT_URLCONF = "django_security_tools.urls"
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'django_security_tools/templates'],  # Ensure this points to the root-level templates directory
+        'DIRS': [BASE_DIR / 'templates'],  # Ensure this points to the root-level templates directory
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

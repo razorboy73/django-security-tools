@@ -14,11 +14,7 @@
         <ul>
             <a href="{% url 'mac_address_changer:index' %}">MAC Address Changer</a>
 
-            {% for app in applications %}
-            <li>
-                <a href="{{ app.url }}">{{ app.name }}</a>
-            </li>
-            {% endfor %}
+            <a href="{% url 'network_scanner:index' %}">Network Scanner</a>
         </ul>
     </main>
     <footer>
