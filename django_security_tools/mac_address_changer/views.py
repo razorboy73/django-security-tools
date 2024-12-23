@@ -2,6 +2,9 @@ from django.shortcuts import render, redirect
 from django.utils.timezone import now
 from django.http import JsonResponse
 from django.contrib import messages
+from mac_address_changer.models import Interface
+from django.utils.timezone import now
+from .utils import change_mac_command, validate_mac
 from .models import Interface
 import subprocess
 import random
@@ -15,6 +18,7 @@ def index(request):
     interfaces = Interface.objects.all()
     return render(request, "mac_address_changer/index.html", {"interfaces": interfaces})
 
+
 def find_interfaces(request):
     """
     Returns a list of active network interfaces with their current MAC addresses.
@@ -24,7 +28,16 @@ def find_interfaces(request):
         interfaces = []
         regex = r'^(\w+): flags=.*?\n(?:.*\n)*?\s+ether\s+([0-9a-fA-F:]{17})'
         for match in re.finditer(regex, result, re.MULTILINE):
-            interfaces.append({'name': match.group(1), 'mac': match.group(2)})
+            interface_name = match.group(1)
+            mac_address = match.group(2)
+
+            # Save interface to the database if it doesn't already exist
+            interface, created = Interface.objects.get_or_create(name=interface_name)
+            if created or not interface.mac_address:
+                interface.mac_address = mac_address
+                interface.save()
+
+            interfaces.append({'name': interface_name, 'mac': mac_address})
 
         return JsonResponse({'interfaces': interfaces, 'instructions': "Select an interface to proceed."})
     except Exception as e:
@@ -84,41 +97,48 @@ def change_mac(request):
     interface_name = request.POST.get("interface")
     new_mac = request.POST.get("mac")
 
+    # Debugging: Log received values
+    print("DEBUG: interface_name received:", interface_name)
+    print("DEBUG: All interfaces in DB:", [i.name for i in Interface.objects.all()])
+
     if not validate_mac(new_mac):
         messages.error(request, f"Invalid MAC address format: {new_mac}. Please try again.")
-        return redirect("index")
+        return redirect("mac_address_changer:index")
 
     try:
-        # Get the interface to change
+        # Fetch the interface from the database
         interface = Interface.objects.get(name=interface_name)
 
-        # Save the original MAC if it's not already saved
+        # Save the original MAC if not already saved
         if not interface.original_mac:
             interface.original_mac = interface.mac_address
 
         # Change the MAC address
         change_mac_command(interface_name, new_mac)
 
-        # Update the MAC address and set last_changed
+        # Update the database record
         interface.mac_address = new_mac
         interface.last_changed = now()
         interface.save()
 
-        # Reset last_changed for all other interfaces
+        # Reset `last_changed` for all other interfaces
         Interface.objects.exclude(name=interface_name).update(last_changed=None)
 
+        # Success message
         messages.success(
             request,
             f"MAC address for interface '{interface_name}' successfully changed. "
             f"Original MAC: {interface.original_mac}, New MAC: {new_mac}."
         )
     except Interface.DoesNotExist:
+        # Interface not found in the database
         messages.error(request, f"Interface '{interface_name}' not found.")
     except RuntimeError as e:
+        # Error occurred during the MAC address change
         messages.error(request, f"Error: {e}")
 
-    return redirect("index")
-    
+    # Redirect to the index page
+    return redirect("mac_address_changer:index")
 
 def revert_mac(request):
     """
@@ -151,7 +171,8 @@ def revert_mac(request):
     except RuntimeError as e:
         messages.error(request, f"Error: {e}")
 
-    return redirect("index")
+    return redirect('mac_address_changer:index')
+
 
 
 
