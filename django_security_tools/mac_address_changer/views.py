@@ -3,12 +3,10 @@ from django.utils.timezone import now
 from django.http import JsonResponse
 from django.contrib import messages
 from mac_address_changer.models import Interface
-from django.utils.timezone import now
 from .utils import change_mac_command, validate_mac
-from .models import Interface
 import subprocess
-import random
 import re
+import random
 
 
 def index(request):
@@ -22,72 +20,78 @@ def index(request):
 def find_interfaces(request):
     """
     Returns a list of active network interfaces with their current MAC addresses.
+    This function skips the loopback interface (lo).
     """
     try:
+        # Execute the ifconfig command and decode the output
         result = subprocess.check_output(['ifconfig'], stderr=subprocess.STDOUT).decode('utf-8')
+        print("DEBUG: Raw ifconfig output:\n", result)
+
         interfaces = []
-        regex = r'^(\w+): flags=.*?\n(?:.*\n)*?\s+ether\s+([0-9a-fA-F:]{17})'
-        for match in re.finditer(regex, result, re.MULTILINE):
-            interface_name = match.group(1)
-            mac_address = match.group(2)
+        current_interface = None
 
-            # Save interface to the database if it doesn't already exist
-            interface, created = Interface.objects.get_or_create(name=interface_name)
-            if created or not interface.mac_address:
-                interface.mac_address = mac_address
-                interface.save()
+        # Regular expressions for interface name and MAC address
+        interface_regex = r'^\s*([\w\d]+):'  # Matches lines starting with the interface name
+        mac_regex = r'ether\s+([0-9a-fA-F:]{17})'  # Matches MAC addresses
 
-            interfaces.append({'name': interface_name, 'mac': mac_address})
+        # Split the output into lines for processing
+        lines = result.split("\n")
+        print("DEBUG: Split ifconfig output into lines.")
 
-        return JsonResponse({'interfaces': interfaces, 'instructions': "Select an interface to proceed."})
+        for line in lines:
+            # Check if the line contains an interface name
+            interface_match = re.match(interface_regex, line)
+            if interface_match:
+                current_interface = interface_match.group(1).strip()
+                print(f"DEBUG: Found interface: {current_interface}")
+                continue
+
+            # Check if the line contains a MAC address
+            mac_match = re.search(mac_regex, line)
+            if mac_match and current_interface:
+                mac_address = mac_match.group(1).strip()
+                print(f"DEBUG: Found MAC address for {current_interface}: {mac_address}")
+
+                # Skip the loopback interface
+                if current_interface.lower() == "lo":
+                    print(f"DEBUG: Skipping loopback interface: {current_interface}")
+                    current_interface = None
+                    continue
+
+                # Save the interface and MAC to the database
+                try:
+                    interface, created = Interface.objects.get_or_create(name=current_interface)
+                    print(f"DEBUG: Interface retrieved or created: {interface.name}, created: {created}")
+
+                    # Update the MAC address if newly created or it has changed
+                    if created or interface.mac_address != mac_address:
+                        print(f"DEBUG: Updating MAC address for {current_interface}: {interface.mac_address} -> {mac_address}")
+                        interface.mac_address = mac_address
+                        interface.save()
+                    else:
+                        print(f"DEBUG: No changes needed for interface: {current_interface}")
+                except Exception as e:
+                    print(f"DEBUG: Error handling interface {current_interface}: {str(e)}")
+
+                # Append the interface to the response list
+                interfaces.append({"name": current_interface, "mac": mac_address})
+                current_interface = None  # Reset for the next interface
+
+        # Debugging final extracted interfaces
+        print(f"DEBUG: Final extracted interfaces: {interfaces}")
+
+        # Debugging database state after update
+        print("DEBUG: Database state after update:")
+        for interface in Interface.objects.all():
+            print(f"Name: {interface.name}, MAC: {interface.mac_address}")
+
+        # Return the extracted interfaces as JSON response
+        return JsonResponse({"interfaces": interfaces, "instructions": "Select an interface to proceed."})
+
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-
-
-def validate_mac(mac):
-    """
-    Validates the MAC address format.
-    """
-    pattern = r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
-    return re.match(pattern, mac) is not None
-
-
-def ensure_interface_up(interface):
-    """
-    Ensures the specified interface is up.
-    """
-    try:
-        subprocess.run(["ip", "link", "set", interface, "up"], check=True)
-        print(f"Interface {interface} is now up.")
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error bringing up interface {interface}: {e}")
-
-
-def change_mac_command(interface, mac):
-    """
-    Changes the MAC address for the specified interface.
-    """
-    try:
-        print(f"Changing MAC address for {interface} to {mac}")
-
-        # Ensure the interface is up
-        ensure_interface_up(interface)
-
-        # Bring the interface down
-        subprocess.run(["ip", "link", "set", interface, "down"], check=True)
-
-        # Change the MAC address
-        subprocess.run(["ip", "link", "set", interface, "address", mac], check=True)
-
-        # Bring the interface back up
-        subprocess.run(["ip", "link", "set", interface, "up"], check=True)
-
-        print(f"MAC address for {interface} successfully changed to {mac}")
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error executing ip command: {e}")
-
+        # Log and return any errors encountered during the process
+        print(f"DEBUG: Error in find_interfaces: {str(e)}")
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 def change_mac(request):
@@ -140,6 +144,7 @@ def change_mac(request):
     # Redirect to the index page
     return redirect("mac_address_changer:index")
 
+
 def revert_mac(request):
     """
     Reverts the MAC address for the last changed interface to its original value.
@@ -174,11 +179,9 @@ def revert_mac(request):
     return redirect('mac_address_changer:index')
 
 
-
-
-
-
 def generate_mac(request):
-    # Generate a random MAC address
+    """
+    Generates a random MAC address.
+    """
     mac_address = ":".join(f"{random.randint(0, 255):02x}" for _ in range(6))
     return JsonResponse({'mac_address': mac_address})
