@@ -7,6 +7,7 @@ from .utils import change_mac_command, validate_mac
 import subprocess
 import re
 import random
+import json
 
 
 def index(request):
@@ -17,79 +18,148 @@ def index(request):
     return render(request, "mac_address_changer/index.html", {"interfaces": interfaces})
 
 
+def check_nic_status(request):
+    """
+    Checks the status of all network interfaces using 'ip link show'.
+    Identifies interfaces that are 'down' or 'dormant' and includes their MAC addresses.
+    """
+    try:
+        # Run the 'ip link show' command to list all network interfaces
+        result = subprocess.run(['ip', 'link', 'show'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Debugging: Log the command's raw output
+        print("DEBUG: 'ip link show' output:\n", result.stdout)
+        print("DEBUG: 'ip link show' errors:\n", result.stderr)
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Error executing 'ip link show': {result.stderr}")
+
+        interfaces = []
+        lines = result.stdout.splitlines()
+        current_interface = {}
+
+        for line in lines:
+            # Match the interface name
+            name_match = re.match(r'^\d+:\s+([\w\d@]+):', line)
+            if name_match:
+                if current_interface:
+                    interfaces.append(current_interface)
+                current_interface = {
+                    "name": name_match.group(1),
+                    "status": "unknown",
+                    "mac": "unknown",
+                }
+                continue
+
+            # Match the interface status
+            if "state" in line and current_interface:
+                if "UP" in line:
+                    current_interface["status"] = "up"
+                elif "DOWN" in line:
+                    current_interface["status"] = "down"
+                elif "DORMANT" in line:
+                    current_interface["status"] = "dormant"
+
+            # Match the MAC address
+            mac_match = re.search(r'link/ether\s+([0-9a-fA-F:]{17})', line)
+            if mac_match and current_interface:
+                current_interface["mac"] = mac_match.group(1)
+
+        # Append the last interface
+        if current_interface:
+            interfaces.append(current_interface)
+
+        # Debugging: Log parsed interfaces
+        print("DEBUG: Parsed NIC statuses with MAC:\n", interfaces)
+
+        return JsonResponse({"interfaces": interfaces})
+
+    except Exception as e:
+        print(f"DEBUG: Error in check_nic_status: {str(e)}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+def bring_nic_up(request):
+    """
+    Brings a specific network interface back up using 'sudo ip link set <interface_name> up'.
+    """
+    print(f"DEBUG: Received request body: {request.body}")
+
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method."}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        interface_name = data.get("interface")
+
+        if not interface_name:
+            return JsonResponse({"error": "Interface name is required."}, status=400)
+
+        result = subprocess.run(['sudo', 'ip', 'link', 'set', interface_name, 'up'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        print("DEBUG: 'ip link set <interface> up' output:\n", result.stdout)
+        print("DEBUG: 'ip link set <interface> up' errors:\n", result.stderr)
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Error bringing interface {interface_name} up: {result.stderr.strip()}")
+
+        return JsonResponse({"message": f"Interface {interface_name} is now up."})
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload."}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 def find_interfaces(request):
     """
     Returns a list of active network interfaces with their current MAC addresses.
-    This function skips the loopback interface (lo).
     """
     try:
-        # Execute the ifconfig command and decode the output
         result = subprocess.check_output(['ifconfig'], stderr=subprocess.STDOUT).decode('utf-8')
         print("DEBUG: Raw ifconfig output:\n", result)
 
         interfaces = []
         current_interface = None
 
-        # Regular expressions for interface name and MAC address
-        interface_regex = r'^\s*([\w\d]+):'  # Matches lines starting with the interface name
-        mac_regex = r'ether\s+([0-9a-fA-F:]{17})'  # Matches MAC addresses
+        interface_regex = r'^\s*([\w\d]+):'
+        mac_regex = r'ether\s+([0-9a-fA-F:]{17})'
 
-        # Split the output into lines for processing
         lines = result.split("\n")
         print("DEBUG: Split ifconfig output into lines.")
 
         for line in lines:
-            # Check if the line contains an interface name
             interface_match = re.match(interface_regex, line)
             if interface_match:
                 current_interface = interface_match.group(1).strip()
                 print(f"DEBUG: Found interface: {current_interface}")
                 continue
 
-            # Check if the line contains a MAC address
             mac_match = re.search(mac_regex, line)
             if mac_match and current_interface:
                 mac_address = mac_match.group(1).strip()
                 print(f"DEBUG: Found MAC address for {current_interface}: {mac_address}")
 
-                # Skip the loopback interface
                 if current_interface.lower() == "lo":
                     print(f"DEBUG: Skipping loopback interface: {current_interface}")
                     current_interface = None
                     continue
 
-                # Save the interface and MAC to the database
                 try:
                     interface, created = Interface.objects.get_or_create(name=current_interface)
-                    print(f"DEBUG: Interface retrieved or created: {interface.name}, created: {created}")
-
-                    # Update the MAC address if newly created or it has changed
                     if created or interface.mac_address != mac_address:
-                        print(f"DEBUG: Updating MAC address for {current_interface}: {interface.mac_address} -> {mac_address}")
                         interface.mac_address = mac_address
                         interface.save()
-                    else:
-                        print(f"DEBUG: No changes needed for interface: {current_interface}")
                 except Exception as e:
                     print(f"DEBUG: Error handling interface {current_interface}: {str(e)}")
 
-                # Append the interface to the response list
                 interfaces.append({"name": current_interface, "mac": mac_address})
-                current_interface = None  # Reset for the next interface
+                current_interface = None
 
-        # Debugging final extracted interfaces
         print(f"DEBUG: Final extracted interfaces: {interfaces}")
-
-        # Debugging database state after update
-        print("DEBUG: Database state after update:")
-        for interface in Interface.objects.all():
-            print(f"Name: {interface.name}, MAC: {interface.mac_address}")
-
-        # Return the extracted interfaces as JSON response
         return JsonResponse({"interfaces": interfaces, "instructions": "Select an interface to proceed."})
 
     except Exception as e:
-        # Log and return any errors encountered during the process
         print(f"DEBUG: Error in find_interfaces: {str(e)}")
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -98,24 +168,33 @@ def change_mac(request):
     """
     Changes the MAC address for the specified interface.
     """
-    interface_name = request.POST.get("interface")
-    new_mac = request.POST.get("mac")
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method. Use POST."}, status=405)
 
-    # Debugging: Log received values
-    print("DEBUG: interface_name received:", interface_name)
-    print("DEBUG: All interfaces in DB:", [i.name for i in Interface.objects.all()])
-
-    if not validate_mac(new_mac):
-        messages.error(request, f"Invalid MAC address format: {new_mac}. Please try again.")
-        return redirect("mac_address_changer:index")
+    # Debug: Log the received request body
+    print("DEBUG: Received request body:", request.body)
 
     try:
+        # Parse the JSON body
+        data = json.loads(request.body)
+        interface_name = data.get("interface")
+        new_mac = data.get("mac")
+
+        if not interface_name or not new_mac:
+            return JsonResponse({"error": "Both interface and MAC address are required."}, status=400)
+
+        if not validate_mac(new_mac):
+            return JsonResponse({"error": f"Invalid MAC address format: {new_mac}."}, status=400)
+
         # Fetch the interface from the database
         interface = Interface.objects.get(name=interface_name)
 
+        # Retrieve the old MAC address
+        old_mac = interface.mac_address
+
         # Save the original MAC if not already saved
         if not interface.original_mac:
-            interface.original_mac = interface.mac_address
+            interface.original_mac = old_mac
 
         # Change the MAC address
         change_mac_command(interface_name, new_mac)
@@ -128,21 +207,22 @@ def change_mac(request):
         # Reset `last_changed` for all other interfaces
         Interface.objects.exclude(name=interface_name).update(last_changed=None)
 
-        # Success message
-        messages.success(
-            request,
-            f"MAC address for interface '{interface_name}' successfully changed. "
-            f"Original MAC: {interface.original_mac}, New MAC: {new_mac}."
-        )
+        # Return a detailed success message
+        return JsonResponse({
+            "message": (
+                f"MAC address for interface '{interface_name}' successfully changed. "
+                f"Old MAC: {old_mac}, New MAC: {new_mac}."
+            ),
+            "interface": interface_name,
+            "old_mac": old_mac,
+            "new_mac": new_mac,
+        })
     except Interface.DoesNotExist:
-        # Interface not found in the database
-        messages.error(request, f"Interface '{interface_name}' not found.")
-    except RuntimeError as e:
-        # Error occurred during the MAC address change
-        messages.error(request, f"Error: {e}")
-
-    # Redirect to the index page
-    return redirect("mac_address_changer:index")
+        return JsonResponse({"error": f"Interface '{interface_name}' not found."}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload."}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 def revert_mac(request):
@@ -150,33 +230,25 @@ def revert_mac(request):
     Reverts the MAC address for the last changed interface to its original value.
     """
     try:
-        # Find the last changed interface
         interface = Interface.objects.filter(last_changed__isnull=False).first()
 
         if not interface:
-            raise ValueError("No interface found to revert.")
+            return JsonResponse({"error": "No interface found to revert."}, status=404)
 
         if not interface.original_mac:
-            raise ValueError(f"Original MAC address not found for interface '{interface.name}'.")
+            return JsonResponse({"error": f"Original MAC address not found for interface '{interface.name}'."}, status=404)
 
-        # Revert the MAC address
         change_mac_command(interface.name, interface.original_mac)
 
-        # Update the database
         interface.mac_address = interface.original_mac
         interface.last_changed = None
         interface.save()
 
-        messages.success(
-            request,
-            f"Reverted MAC address for interface '{interface.name}' to original value: {interface.original_mac}."
-        )
-    except ValueError as e:
-        messages.error(request, f"Error: {e}")
+        return JsonResponse({
+            "message": f"Reverted MAC address for interface '{interface.name}' to original value: {interface.original_mac}."
+        })
     except RuntimeError as e:
-        messages.error(request, f"Error: {e}")
-
-    return redirect('mac_address_changer:index')
+        return JsonResponse({"error": f"Error: {e}"}, status=500)
 
 
 def generate_mac(request):

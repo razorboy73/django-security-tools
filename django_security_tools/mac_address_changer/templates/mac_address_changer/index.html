@@ -1,39 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MAC Address Changer</title>
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-</head>
+{% block title %}MAC Address Changer{% endblock %}
 
-<body>
-    <div class="container">
-        <!-- Page Header -->
+{% block content %}
+<main class="container">
+    <!-- Page Header -->
+    <header>
         <h1>MAC Address Changer</h1>
+    </header>
 
-        <!-- Messages Section -->
-        <div id="message-container">
-            {% for message in messages %}
-            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-error{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
+    <!-- Messages Section -->
+    <section id="message-container" class="messages">
+        <!-- Dynamic messages will appear here -->
+    </section>
 
-        <!-- Find Network Interfaces Section -->
-        <form onsubmit="event.preventDefault(); findInterfaces();">
-            <h2>Step 1: Find Network Interfaces</h2>
-            <p>Click the button below to fetch the list of available network interfaces.</p>
-            <button type="submit">Find Network Interfaces</button>
+    <!-- Step 1: Check NIC Status Section -->
+    <section>
+        <h2>Step 1: Check Network Interface Status</h2>
+        <p>Click the button below to check the current status of network interfaces.</p>
+        <button class="btn btn-secondary" id="check-nic-status">Check NIC Status</button>
+        <div id="nic-status" class="mt-3"></div>
+    </section>
+
+    <!-- Step 2: Find Network Interfaces Section -->
+    <section>
+        <h2>Step 2: Find Network Interfaces</h2>
+        <p>Click the button below to fetch the list of available network interfaces.</p>
+        <form id="find-interfaces-form">
+            <button type="submit" class="btn btn-secondary">Find Network Interfaces</button>
         </form>
-
-        <!-- Display Network Interfaces -->
         <div id="interface-list" style="display: none;">
-            <h2>Available Network Interfaces</h2>
-            <table>
+            <h3>Available Network Interfaces</h3>
+            <table class="table">
                 <thead>
                     <tr>
                         <th>Interface Name</th>
@@ -41,84 +39,248 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Rows populated by JavaScript -->
+                    <!-- Populated by JavaScript -->
                 </tbody>
             </table>
         </div>
+    </section>
 
-        <!-- Change MAC Address Section -->
-        <form method="POST" action="{% url 'mac_address_changer:change_mac' %}">
-            {% csrf_token %}
-            <h2>Step 2: Change MAC Address</h2>
-            <label for="interface">Select Interface:</label>
-            <select name="interface" id="interface" required>
-                <option value="" disabled selected>Select an interface</option>
-            </select>
-            <label for="mac">New MAC Address:</label>
-            <input type="text" id="mac" name="mac" placeholder="Enter new MAC address">
-            <button type="button" onclick="generateMac()">Generate MAC</button>
-            <button type="submit">Change MAC</button>
+    <!-- Step 3: Change MAC Address Section -->
+    <section>
+        <h2>Step 3: Change MAC Address</h2>
+        <form id="change-mac-form">
+            <div class="form-group">
+                <label for="interface" class="form-label">Select Interface:</label>
+                <select id="interface" required class="form-select">
+                    <option value="" disabled selected>Select an interface</option>
+                    <option value="eth0">eth0</option>
+                    <option value="wlan0">wlan0</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mac" class="form-label">New MAC Address:</label>
+                <input type="text" id="mac" placeholder="Enter new MAC address" required class="form-input">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="generateMac()">Generate MAC</button>
+                <button type="button" class="btn btn-secondary" onclick="changeMac()">Change MAC</button>
+            </div>
         </form>
+    </section>
 
-        <!-- Revert to Original MAC Section -->
-        <form method="POST" action="{% url 'mac_address_changer:revert_mac' %}">
-            {% csrf_token %}
-            <h2>Step 3: Revert to Original MAC Address</h2>
-            <p>This will revert the selected interface to its original MAC address.</p>
-            <button type="submit">Revert to Original MAC</button>
-        </form>
-    </div>
+    <!-- Step 4: Revert to Original MAC Section -->
+    <section>
+        <h2>Step 4: Revert to Original MAC Address</h2>
+        <p>This will revert the selected interface to its original MAC address.</p>
+        <button class="btn btn-secondary" onclick="revertMac()">Revert to Original MAC</button>
+    </section>
+</main>
 
-    <!-- Footer -->
-    <footer>
-        &copy; 2024 Django Security Tools. All rights reserved.
-    </footer>
-
-    <!-- JavaScript -->
-    <script>
-        function findInterfaces() {
-            fetch("{% url 'mac_address_changer:find_interfaces' %}")
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert("Error: " + data.error);
-                    } else {
-                        updateInterfaceList(data.interfaces);
-                        document.getElementById('interface-list').style.display = 'block';
-                    }
-                })
-                .catch(error => alert("An error occurred: " + error));
+<script>
+    // Reset form fields on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const changeMacForm = document.getElementById('change-mac-form');
+        if (changeMacForm) {
+            changeMacForm.reset();
         }
+    });
 
-        function updateInterfaceList(interfaces) {
-            const tableBody = document.querySelector("#interface-list tbody");
-            if (!tableBody) {
-                console.error("Interface table body not found.");
-                return;
-            }
-            tableBody.innerHTML = ""; // Clear existing rows
-            interfaces.forEach(interface => {
-                const row = document.createElement("tr");
-                row.innerHTML = `<td>${interface.name}</td><td>${interface.mac}</td>`;
-                tableBody.appendChild(row);
-                // Populate dropdown options
-                const select = document.getElementById("interface");
-                const option = document.createElement("option");
-                option.value = interface.name;
-                option.textContent = interface.name;
-                select.appendChild(option);
+    // Function to display messages dynamically
+    function displayMessage(message, type = 'success') {
+        const messageContainer = document.getElementById('message-container');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${type === 'success' ? 'alert-success' : 'alert-error'}`;
+        alertDiv.textContent = message;
+        messageContainer.appendChild(alertDiv);
+
+        // Remove the message after 5 seconds
+        setTimeout(() => {
+            messageContainer.removeChild(alertDiv);
+        }, 5000);
+    }
+
+    // Function to check NIC status
+    // Function to check NIC status
+    document.getElementById('check-nic-status').addEventListener('click', function () {
+        fetch("{% url 'mac_address_changer:check_nic_status' %}")
+            .then(response => response.json())
+            .then(data => {
+                let output = '<ul>';
+                data.interfaces.forEach(interface => {
+                    output += `<li id="interface-${interface.name}">
+                        <span>${interface.name} - <span class="${interface.status === 'up' ? 'status-up' : 'status-down'}">${interface.status}</span></span>
+                        <br>
+                        <span>MAC Address: ${interface.mac}</span>
+                        ${interface.status === 'down' || interface.status === 'dormant' ? 
+                        `<br><button class="btn btn-sm btn-warning" onclick="bringNicUp('${interface.name}')">Bring Up</button>` : ''}
+                    </li>`;
+                });
+                output += '</ul>';
+                document.getElementById('nic-status').innerHTML = output;
+            })
+            .catch(error => {
+                displayMessage(`Error: ${error}`, 'error');
             });
+    });
+
+
+    // Function to bring a NIC up
+    // Function to bring a NIC up
+function bringNicUp(interfaceName) {
+    fetch("{% url 'mac_address_changer:bring_nic_up' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}",
+        },
+        body: JSON.stringify({ interface: interfaceName }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        displayMessage(data.message || data.error);
+
+        // Update the interface status in the UI
+        const interfaceElement = document.getElementById(`interface-${interfaceName}`);
+        if (interfaceElement) {
+            // Update the status text and class
+            const statusSpan = interfaceElement.querySelector('.status-down, .status-dormant');
+            if (statusSpan) {
+                statusSpan.textContent = 'up';
+                statusSpan.classList.remove('status-down', 'status-dormant');
+                statusSpan.classList.add('status-up');
+            }
+
+            // Remove the "Bring Up" button
+            const button = interfaceElement.querySelector('button');
+            if (button) {
+                button.remove();
+            }
+        }
+    })
+    .catch(error => {
+        displayMessage(`Error: ${error}`, 'error');
+    });
+}
+
+
+    // Function to find interfaces
+    document.getElementById('find-interfaces-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        fetch("{% url 'mac_address_changer:find_interfaces' %}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    displayMessage("Error: " + data.error, 'error');
+                } else {
+                    updateInterfaceList(data.interfaces);
+                    document.getElementById('interface-list').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                displayMessage(`Error: ${error}`, 'error');
+            });
+    });
+
+    // Function to update the interface list
+    // Function to update the interface list
+function updateInterfaceList(interfaces) {
+    const tableBody = document.querySelector("#interface-list tbody");
+    const selectDropdown = document.getElementById("interface");
+
+    // Clear the current table and dropdown options
+    if (tableBody) {
+        tableBody.innerHTML = ""; // Clear existing rows
+    }
+    if (selectDropdown) {
+        selectDropdown.innerHTML = '<option value="" disabled selected>Select an interface</option>'; // Reset dropdown options
+    }
+
+    // Populate the table and dropdown with new data
+    interfaces.forEach(interface => {
+        // Update the table
+        if (tableBody) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td>${interface.name}</td><td>${interface.mac}</td>`;
+            tableBody.appendChild(row);
         }
 
-        function generateMac() {
-            fetch("{% url 'mac_address_changer:generate_mac' %}")
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('mac').value = data.mac_address;
-                })
-                .catch(error => alert("Error generating MAC address: " + error));
+        // Update the dropdown
+        if (selectDropdown) {
+            const option = document.createElement("option");
+            option.value = interface.name;
+            option.textContent = interface.name;
+            selectDropdown.appendChild(option);
         }
-    </script>
-</body>
+    });
+}
 
-</html>
+
+    // Function to change MAC address
+    function changeMac() {
+        const interfaceName = document.getElementById('interface').value;
+        const newMac = document.getElementById('mac').value;
+
+        if (!interfaceName || !newMac) {
+            displayMessage('Please select an interface and enter a valid MAC address.', 'error');
+            return;
+        }
+
+        fetch("{% url 'mac_address_changer:change_mac' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: JSON.stringify({ interface: interfaceName, mac: newMac }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.error || 'Error occurred'); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            displayMessage(data.message || 'MAC address changed successfully.');
+        })
+        .catch(error => {
+            displayMessage(error.message, 'error');
+        });
+    }
+
+    // Function to revert MAC address
+    function revertMac() {
+        fetch("{% url 'mac_address_changer:revert_mac' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayMessage(data.message || data.error);
+        })
+        .catch(error => {
+            displayMessage(`Error: ${error}`, 'error');
+        });
+    }
+
+    // Function to generate a random MAC address
+    function generateMac() {
+        fetch("{% url 'mac_address_changer:generate_mac' %}")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('mac').value = data.mac_address;
+            })
+            .catch(error => {
+                displayMessage(`Error generating MAC address: ${error}`, 'error');
+            });
+    }
+</script>
+{% endblock %}
