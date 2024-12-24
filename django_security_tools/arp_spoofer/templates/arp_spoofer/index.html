@@ -16,11 +16,13 @@
     </p>
 
     <!-- Messages Section -->
-    {% for message in messages %}
-        <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
 
     <!-- Detect Gateway -->
     <form method="post">
@@ -63,19 +65,40 @@
             </table>
         </div>
 
-        <!-- Select Target for Spoofing -->
+        <!-- Spoofing Controls -->
         <form method="post" class="mt-3">
             {% csrf_token %}
             <div class="form-group">
-                <label for="target">Select Target for Spoofing:</label>
+                <label for="target">Select Victim (Target Device) for Spoofing:</label>
                 <select name="target" id="target" class="form-select" required>
                     {% for device in scan_results %}
                         <option value="{{ device.ip }}|{{ device.mac }}">{{ device.ip }} - {{ device.mac }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" name="spoof_target" class="btn btn-danger mt-2">Start Spoofing</button>
+            <button type="submit" name="start_spoofing" class="btn btn-danger mt-2">Start Spoofing</button>
         </form>
     {% endif %}
+
+    {% if spoofing_status %}
+        <form method="post" class="mt-3">
+            {% csrf_token %}
+            <button type="submit" name="stop_spoofing" class="btn btn-secondary mt-2">Stop Spoofing</button>
+        </form>
+        <div class="alert alert-info mt-3">
+            <strong>Spoofing is active.</strong> Port forwarding is enabled.
+            <div id="packet-indicator" style="width: 20px; height: 20px; background-color: red; margin-top: 10px; animation: flash 1s infinite;">
+            </div>
+            <p>Packets are being sent every second.</p>
+        </div>
+    {% endif %}
 </div>
+
+<style>
+    @keyframes flash {
+        0% { background-color: red; }
+        50% { background-color: green; }
+        100% { background-color: red; }
+    }
+</style>
 {% endblock %}

