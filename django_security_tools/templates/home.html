@@ -1,29 +1,16 @@
-{% load static %}
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Django Security Tools</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% block title %}Welcome to Django Security Tools{% endblock %}
 
-   
-</head>
-<body>
-    <header>
-        <h1>Welcome to Django Security Tools</h1>
-        <p>Select an application below to get started:</p>
-    </header>
-    <main>
-        <ul>
-            {% for app in applications %}
-            <li><a href="{% url app.url %}">{{ app.name }}</a></li>
-            {% endfor %}
-        </ul>
-    </main>
-    <footer>
-        <p>&copy; 2024 Django Security Tools. All rights reserved.</p>
-    </footer>
-</body>
-</html>
+{% block content %}
+    <p>Select an application below to get started:</p>
+    <nav>
+    <ul>
+        
+        {% for app in applications %}
+        <li><a href="{% url app.url %}">{{ app.name }}</a></li>
+        {% endfor %}
+        
+    </ul>
+</nav>
+{% endblock %}

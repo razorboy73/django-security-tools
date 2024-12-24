@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}ARP Spoofer{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>ARP Spoofer</h1>
+    <p>
+        ARP spoofing is a technique by which an attacker sends fake Address Resolution Protocol (ARP) messages
+        onto a local area network. This is often done to link the attacker’s MAC address with the IP address
+        of a legitimate computer or server on the network, enabling the attacker to intercept, modify, or block data.
+    </p>
+    <p>
+        This application demonstrates ARP spoofing for educational and security testing purposes only.
+        Unauthorized use is strictly prohibited.
+    </p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Find Gateway</button>
+    </form>
+
+    {% if gateway_info %}
+        {% if gateway_info.error %}
+            <div class="alert alert-danger mt-3">
+                {{ gateway_info.error }}
+            </div>
+        {% else %}
+            <div class="alert alert-success mt-3">
+                <h4>Gateway Information</h4>
+                <p><strong>IP Address:</strong> {{ gateway_info.ip }}</p>
+                <p><strong>MAC Address:</strong> {{ gateway_info.mac }}</p>
+                <pre>{{ gateway_info.raw_output }}</pre>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

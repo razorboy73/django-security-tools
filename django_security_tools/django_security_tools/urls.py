@@ -25,5 +25,6 @@ urlpatterns = [
     path('', home_view, name='home'),
     path('mac_address_changer/', include('mac_address_changer.urls')),
     path('network_scanner/', include('network_scanner.urls')),
+    path('arp_spoofer/', include('arp_spoofer.urls')),
     path('admin/', admin.site.urls),
 ]
