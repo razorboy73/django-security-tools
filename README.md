@@ -1,7 +1,3 @@
-Here's the updated **README.md** with the addition of the **Network Scanner** application:
-
----
-
 # Django Security Tools
 
 #### Video Demo: <URL HERE>
@@ -15,6 +11,7 @@ Here's the updated **README.md** with the addition of the **Network Scanner** ap
 The project currently includes the following tools:
 1. **MAC Address Changer**: A utility for managing and modifying MAC addresses of network interfaces.
 2. **Network Scanner**: A tool to discover devices on a network, displaying their IP and MAC addresses.
+3. **ARP Spoofer**: A tool to perform ARP spoofing for testing and educational purposes.
 
 ---
 
@@ -50,16 +47,35 @@ The project currently includes the following tools:
 
 ---
 
+## Features of **ARP Spoofer**
+
+1. **Gateway Detection**:
+   - Automatically detects and displays the IP and MAC address of the network gateway.
+2. **Network Device Scanning**:
+   - Scans the network to discover active devices and lists their IP and MAC addresses.
+3. **ARP Spoofing**:
+   - Spoofs the selected target (victim) and gateway to enable a man-in-the-middle attack.
+4. **Port Forwarding**:
+   - Enables port forwarding on the host system to allow intercepted traffic to be forwarded.
+5. **Stop Spoofing**:
+   - Stops the spoofing process and restores the original ARP mappings.
+6. **Visual Indicators**:
+   - Displays real-time status of the spoofing process with animated indicators.
+7. **User Guidance**:
+   - Step-by-step instructions provided in the UI for easy operation.
+
+---
+
 ## Recent Updates
 
-- **Added Network Scanner Tool**:
-  - Integrated ARP-based network scanning with a web interface.
-  - Tracks and logs scan results in the database for historical reference.
-  - Developed an interactive scan history viewer with collapsible details.
-- **Enhanced Revert Functionality in MAC Address Changer**:
-  - Automatically reverts the last modified interface without requiring manual input.
-- **Improved Error Handling**:
-  - Validates MAC address formats, ensures interfaces are up before modifications, and handles command execution errors gracefully.
+- **Added ARP Spoofer Tool**:
+  - Integrated ARP spoofing capabilities for testing and education.
+  - Includes real-time status updates and visual indicators.
+  - Provides step-by-step guidance for users to perform ARP spoofing securely.
+- **Improved Network Scanner**:
+  - Enhanced scan results display and added contextual messages for better user experience.
+- **Enhanced Error Handling**:
+  - Unified error reporting across tools for consistent user feedback.
 
 ---
 
@@ -81,7 +97,9 @@ This project uniquely integrates operating system-level network operations with 
    - Utilizes AJAX for real-time data updates and JavaScript for dynamic UI changes.
 4. **Robust Validation**:
    - Ensures valid MAC addresses and IP ranges before executing operations.
-5. **Reversibility and History Tracking**:
+5. **ARP Spoofing Integration**:
+   - Manages continuous packet spoofing with threading and restores original ARP mappings seamlessly.
+6. **Reversibility and History Tracking**:
    - Tracks and reverts MAC address changes and logs network scans for future reference.
 
 ---
@@ -112,6 +130,13 @@ This project uniquely integrates operating system-level network operations with 
 - **`templates/network_scanner/network_scanner.html`**: HTML template for the scan input form and results.
 - **`templates/network_scanner/scan_history.html`**: HTML template for viewing scan history.
 - **`scanner.py`**: Implements the ARP-based network scanning logic using `scapy`.
+
+### `arp_spoofer/`
+
+- **`views.py`**: Contains logic for gateway detection, network scanning, and ARP spoofing.
+- **`urls.py`**: Maps URLs to their corresponding views.
+- **`templates/arp_spoofer/index.html`**: HTML template for the ARP Spoofer application.
+- **`utils.py`**: Implements the ARP spoofing and port forwarding logic.
 
 ---
 
@@ -167,5 +192,8 @@ python manage.py test
    - Verify the displayed IP and MAC addresses.
 2. **View Scan History**:
    - Navigate to the Scan History page and verify the logged results.
+3. **Perform ARP Spoofing**:
+   - Use the ARP Spoofer to detect the gateway, scan the network, and select a target for spoofing.
+   - Verify the real-time spoofing indicators.
 
--
+

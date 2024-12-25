@@ -1,11 +1,7 @@
-import subprocess
-import re
 from django.shortcuts import render
 from django.http import JsonResponse
 from .forms import NetworkScannerForm
 from scapy.all import ARP, Ether, srp
-import ipaddress
-import logging
 from django.contrib import messages
 from .utils import get_gateway_info, scan_network, spoof_both, start_spoofing_continuous, stop_spoofing, enable_port_forwarding
 
@@ -78,6 +74,7 @@ def index(request):
 
     # Clear scan results on a GET request
     elif request.method == "GET":
+        request.session["spoofing_status"] = False
         request.session.pop("scan_results", None)
 
     return render(request, "arp_spoofer/index.html", {

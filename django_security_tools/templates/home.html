@@ -3,14 +3,29 @@
 {% block title %}Welcome to Django Security Tools{% endblock %}
 
 {% block content %}
-    <p>Select an application below to get started:</p>
-    <nav>
-    <ul>
-        
-        {% for app in applications %}
-        <li><a href="{% url app.url %}">{{ app.name }}</a></li>
-        {% endfor %}
-        
-    </ul>
-</nav>
+    <h1>Welcome to Django Security Tools</h1>
+    <p>
+        Django Security Tools is a collection of applications designed to help network engineers, security researchers, and enthusiasts 
+        perform various network-related tasks efficiently and securely. Below are the tools available and a brief description of what they do:
+    </p>
+
+    <section class="tool-descriptions">
+        <h2>Available Tools</h2>
+        <ul>
+            {% for app in applications %}
+                <li>
+                    <a href="{% url app.url %}"><strong>{{ app.name }}</strong></a>: 
+                    {% if app.name == "MAC Address Changer" %}
+                        Change the MAC address of your network interface. Useful for privacy, testing, or bypassing restrictions.
+                    {% elif app.name == "Network Scanner" %}
+                        Discover devices on your local network by scanning IP ranges and viewing their IP and MAC addresses.
+                    {% elif app.name == "ARP Spoofer" %}
+                        Perform ARP spoofing to intercept or redirect network traffic. Intended for educational and security testing purposes.
+                    {% else %}
+                        Explore this tool to learn more about its features.
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
 {% endblock %}

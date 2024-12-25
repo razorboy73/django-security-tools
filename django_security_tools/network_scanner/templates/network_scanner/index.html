@@ -1,38 +1,42 @@
-{% extends "network_scanner/base.html" %}
+{% extends "base.html" %}
 {% block title %}Scan Network{% endblock %}
 
 {% block content %}
-<h1>Network Scanner</h1>
-<form method="post" style="margin-bottom: 2rem;">
-    {% csrf_token %}
-    <fieldset>
-        <label for="id_ip_range">Enter IP Range:</label>
-        {{ form.ip_range }}
-        <button type="submit" class="button-primary">Scan</button>
-    </fieldset>
-</form>
+<div class="form-container">
+    <h1 class="title">Network Scanner</h1>
+    <form method="post" class="scan-form">
+        {% csrf_token %}
+        <fieldset>
+            <label for="id_ip_range" class="form-label">Enter IP Range:</label>
+            {{ form.ip_range }}
+            <button type="submit" class="button-primary">Scan</button>
+        </fieldset>
+    </form>
+</div>
 
-{% if results %}
-<h2>Scan Results</h2>
-<table>
-    <thead>
-        <tr>
-            <th>IP Address</th>
-            <th>MAC Address</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for device in results %}
-        <tr>
-            <td>{{ device.ip }}</td>
-            <td>{{ device.mac }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-{% if form.is_bound %}
-<p>No results found. Please check the IP range and try again.</p>
-{% endif %}
-{% endif %}
+<div class="results-container">
+    {% if results %}
+    <h2 class="subtitle">Scan Results</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>IP Address</th>
+                <th>MAC Address</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for device in results %}
+            <tr>
+                <td>{{ device.ip }}</td>
+                <td>{{ device.mac }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {% if form.is_bound %}
+    <p class="no-results">No results found. Please check the IP range and try again.</p>
+    {% endif %}
+    {% endif %}
+</div>
 {% endblock %}

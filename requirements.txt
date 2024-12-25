@@ -1,11 +1,11 @@
 # Core Django framework
-Django==4.2.5  # Replace with your specific version if needed
+Django==4.2.5  # Ensure compatibility with the project
 
 # Networking and packet crafting library
-scapy==2.5.0  # Replace with the version of Scapy you're using
+scapy==2.5.0  # Required for ARP spoofing and network scanning
 
 # Testing and mocking
-pytest==7.2.2  # Pytest for advanced testing features
+pytest==7.2.2  # Advanced testing features
 pytest-django==4.5.2  # Django plugin for Pytest
 mock==5.0.1  # For mocking in tests
 
@@ -18,3 +18,10 @@ black==23.7.0  # Code formatter
 
 # Other utility libraries
 ipaddress==1.0.23  # For IP address validation (if not included in Python 3.x)
+
+# Additional utility libraries
+threading==1.1.0  # For multithreading (used in ARP spoofing)
+time==0.1.0  # For delays and time-based operations
+
+# Required for managing subprocess calls
+subprocess32==3.5.4  # Subprocess module for additional process management capabilities
