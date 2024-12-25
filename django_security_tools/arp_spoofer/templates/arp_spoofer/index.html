@@ -15,6 +15,32 @@
         Unauthorized use is strictly prohibited.
     </p>
 
+    <!-- Step-by-step Instructions -->
+    <div class="instructions mt-4">
+        <h2>How to Use the ARP Spoofer</h2>
+        <ol>
+            <li>
+                <strong>Detect Gateway:</strong> Click the <em>"Detect Gateway"</em> button to find the IP and MAC address of your network gateway.
+                The gateway information will appear below the button once detected.
+            </li>
+            <li>
+                <strong>Scan Network:</strong> Click the <em>"Scan Network"</em> button to scan for devices on the network. A list of available devices,
+                including their IP and MAC addresses, will appear below the button.
+            </li>
+            <li>
+                <strong>Select Target:</strong> From the scanned results, choose a device (victim) to target. The dropdown will populate with available devices.
+            </li>
+            <li>
+                <strong>Start Spoofing:</strong> Click the <em>"Start Spoofing"</em> button to begin spoofing the selected target. The application will impersonate
+                the gateway for the victim, enabling a man-in-the-middle attack.
+            </li>
+            <li>
+                <strong>Stop Spoofing:</strong> Click the <em>"Stop Spoofing"</em> button to end the spoofing process.
+            </li>
+        </ol>
+        <p class="text-danger"><strong>Warning:</strong> Use this tool responsibly and only in environments where you have explicit permission to test.</p>
+    </div>
+
     <!-- Messages Section -->
     {% if messages %}
         {% for message in messages %}
@@ -39,10 +65,13 @@
     {% endif %}
 
     <!-- Scan Network -->
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" name="scan_network" class="btn btn-secondary">Scan Network</button>
-    </form>
+    <div class="mt-4">
+        <p class="text-info">Available networks will appear here after scanning:</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" name="scan_network" class="btn btn-secondary">Scan Network</button>
+        </form>
+    </div>
 
     {% if scan_results %}
         <div class="mt-3">
