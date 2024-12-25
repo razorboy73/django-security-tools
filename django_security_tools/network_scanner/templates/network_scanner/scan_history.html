@@ -1,38 +1,44 @@
-{% extends "network_scanner/base.html" %}
+{% extends "base.html" %}
 {% block title %}Scan History{% endblock %}
 
 {% block content %}
-<h1>Scan History</h1>
+<div class="form-container">
+    <h1 class="title">Scan History</h1>
+    <a href="{% url 'network_scanner:index' %}" class="link-secondary">Back to Network Scanner</a>
+</div>
 
-{% if logs %}
-<table>
-    <thead>
-        <tr>
-            <th>IP Range</th>
-            <th>Scanned At</th>
-            <th>Results</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for log in logs %}
-        <tr>
-            <td>{{ log.ip_range }}</td>
-            <td>{{ log.scanned_at }}</td>
-            <td>
-                <a href="#" onclick="toggleDetails('details-{{ forloop.counter }}'); return false;">View Details</a>
-                <pre id="details-{{ forloop.counter }}" style="display: none;">{{ log.results|safe }}</pre>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="results-container">
+    {% if logs %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>IP Range</th>
+                <th>Scanned At</th>
+                <th>Results</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.ip_range }}</td>
+                <td>{{ log.scanned_at }}</td>
+                <td>
+                    <a href="#" onclick="toggleDetails('details-{{ forloop.counter }}'); return false;">View Details</a>
+                    <pre id="details-{{ forloop.counter }}" style="display: none;">{{ log.results|safe }}</pre>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="no-results">No scan history available.</p>
+    {% endif %}
+</div>
+
 <script>
     function toggleDetails(id) {
         const el = document.getElementById(id);
         el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
 </script>
-{% else %}
-<p>No scan history available.</p>
-{% endif %}
 {% endblock %}

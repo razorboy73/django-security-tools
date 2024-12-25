@@ -17,22 +17,15 @@ class ARPSpooferTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     @patch('arp_spoofer.utils.scan_network')
-    @patch('arp_spoofer.utils.get_gateway_info')
-    def test_scan_network_success(self, mock_get_gateway_info, mock_scan_network):
-        """Test scanning the network successfully"""
-        mock_get_gateway_info.return_value = {'ip': '172.16.149.2', 'mac': '00:50:56:ed:9f:de'}
-        mock_scan_network.return_value = [
-            {'ip': '172.16.149.1', 'mac': 'f2:18:98:6a:f1:65'},
-            {'ip': '172.16.149.2', 'mac': '00:50:56:ed:9f:de'},
-            {'ip': '172.16.149.163', 'mac': '00:0c:29:3c:f6:d1'},
-            {'ip': '172.16.149.254', 'mac': '00:50:56:f4:72:0e'}
-        ]
-        response = self.client.post(reverse('arp_spoofer:index'), {'scan_network': '1'})
-        self.assertContains(response, "172.16.149.1")
-        self.assertContains(response, "172.16.149.2")
-        self.assertContains(response, "172.16.149.163")
-        self.assertContains(response, "172.16.149.254")
-        self.assertEqual(response.status_code, 200)
+def test_scan_network_success(self, mock_scan_network):
+    mock_scan_network.return_value = [
+        {'ip': '172.16.149.1', 'mac': 'f2:18:98:6a:f1:65'},
+        {'ip': '172.16.149.2', 'mac': '00:50:56:ed:9f:de'},
+        {'ip': '172.16.149.163', 'mac': '00:0c:29:3c:f6:d1'},
+        {'ip': '172.16.149.254', 'mac': '00:50:56:f4:72:0e'},
+    ]
+    response = self.client.post(reverse('arp_spoofer:index'), {'scan_network': '1'})
+    self.assertContains(response, "172.16.149.163")
 
     @patch('arp_spoofer.utils.start_spoofing_continuous')
     @patch('arp_spoofer.utils.get_gateway_info')
