@@ -17,6 +17,10 @@
     </div>
 {% endif %}
 
+<!-- Find Gateway Button -->
+<button id="find-gateway-btn" class="btn btn-info">Find Gateway</button>
+<div id="gateway-info" class="mt-3"></div>
+
 <!-- Dynamic Buttons -->
 {% if is_spoofing %}
     <!-- Stop Spoofing -->
@@ -24,6 +28,9 @@
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Stop Spoofing</button>
     </form>
+    <div id="packet-count" class="mt-3">
+        <strong>Packets Sent:</strong> <span id="packet-counter">0</span>
+    </div>
 {% else %}
     <!-- Start Spoofing -->
     <form method="post" action="{% url 'arp_spoofer:start_spoofing' %}">
@@ -31,4 +38,46 @@
         <button type="submit" class="btn btn-success">Start Spoofing</button>
     </form>
 {% endif %}
+
+<script>
+    document.getElementById('find-gateway-btn').addEventListener('click', function () {
+        // Fetch gateway details via AJAX
+        fetch("{% url 'arp_spoofer:find_gateway' %}")
+            .then(response => response.json())
+            .then(data => {
+                // Check for errors
+                if (data.error) {
+                    document.getElementById('gateway-info').innerHTML = `
+                        <div class="alert alert-danger">Error: ${data.error}</div>`;
+                } else {
+                    // Display gateway IP and MAC address
+                    document.getElementById('gateway-info').innerHTML = `
+                        <div class="alert alert-success">
+                            Gateway IP: ${data.ip_address}<br>
+                            Gateway MAC: ${data.mac_address}
+                        </div>`;
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching gateway details:', err);
+                document.getElementById('gateway-info').innerHTML = `
+                    <div class="alert alert-danger">An unexpected error occurred.</div>`;
+            });
+    });
+
+    {% if is_spoofing %}
+    // Function to fetch the packet count periodically
+    function updatePacketCount() {
+        fetch("{% url 'arp_spoofer:get_packet_count' %}")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('packet-counter').textContent = data.packet_count;
+            })
+            .catch(err => console.error("Error fetching packet count:", err));
+    }
+
+    // Update packet count every second while spoofing
+    setInterval(updatePacketCount, 1000);
+    {% endif %}
+</script>
 {% endblock %}
