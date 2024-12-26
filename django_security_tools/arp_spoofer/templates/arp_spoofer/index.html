@@ -21,11 +21,58 @@
 <button id="find-gateway-btn" class="btn btn-info">Find Gateway</button>
 <div id="gateway-info" class="mt-3"></div>
 
+<!-- Find Gateway -->
+<button id="scan-network-btn" class="btn btn-primary">Scan Network</button>
+
+<div id="network-results" style="display:none;">
+    <h3>Connected Devices</h3>
+    <form method="post" action="{% url 'arp_spoofer:start_spoofing' %}">
+        {% csrf_token %}
+        <label for="target-dropdown">Select a target device:</label>
+        <select id="target-dropdown" name="target_ip" required>
+            <option value="" disabled selected>Select a device</option>
+        </select>
+        <input type="hidden" id="router-ip" name="router_ip">
+        <button type="submit" class="btn btn-success">Start Spoofing</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('scan-network-btn').addEventListener('click', function () {
+        fetch("{% url 'arp_spoofer:scan_network' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.devices) {
+                    const targetDropdown = document.getElementById('target-dropdown');
+                    const routerInput = document.getElementById('router-ip');
+
+                    targetDropdown.innerHTML = '<option value="" disabled selected>Select a device</option>';
+                    data.devices.forEach(device => {
+                        const option = `<option value="${device.ip}">${device.ip} (${device.mac_address})</option>`;
+                        targetDropdown.innerHTML += option;
+                    });
+                    routerInput.value = data.gateway_ip;  // Populate hidden input with router IP
+                    document.getElementById('network-results').style.display = 'block';
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => console.error('Error scanning network:', error));
+    });
+</script>
+
 <!-- Dynamic Buttons -->
 {% if is_spoofing %}
     <!-- Stop Spoofing -->
     <form method="post" action="{% url 'arp_spoofer:stop_spoofing' %}">
         {% csrf_token %}
+        <input type="hidden" name="target_ip" value="{{ selected_target_ip }}">
+        <input type="hidden" name="router_ip" value="{{ selected_router_ip }}">
         <button type="submit" class="btn btn-danger">Stop Spoofing</button>
     </form>
     <div id="packet-count" class="mt-3">
