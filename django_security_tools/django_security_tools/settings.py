@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+   
     'arp_spoofer',
     'network_scanner',
     "mac_address_changer",
