@@ -1,27 +1,29 @@
-# Core Django framework
+# Core Django Framework
 Django==4.2.5  # Ensure compatibility with the project
 
-# Networking and packet crafting library
+# Networking and Packet Crafting Library
 scapy==2.5.0  # Required for ARP spoofing and network scanning
 
-# Testing and mocking
+# Testing and Mocking
 pytest==7.2.2  # Advanced testing features
 pytest-django==4.5.2  # Django plugin for Pytest
 mock==5.0.1  # For mocking in tests
 
-# Database dependencies (if using PostgreSQL)
+# Database Dependencies (if using PostgreSQL)
 psycopg2-binary==2.9.6  # PostgreSQL database adapter for Django
 
-# Linting and code quality
+# Linting and Code Quality
 flake8==6.0.0  # Python linting
-black==23.7.0  # Code formatter
+black==23.7.0  # Code formatter for consistent styling
 
-# Other utility libraries
-ipaddress==1.0.23  # For IP address validation (if not included in Python 3.x)
+# Other Utility Libraries
+ipaddress==1.0.23  # For IP address validation (optional, Python 3.x includes ipaddress module)
 
-# Additional utility libraries
-threading==1.1.0  # For multithreading (used in ARP spoofing)
-time==0.1.0  # For delays and time-based operations
+# Multithreading (Already built-in to Python, no separate installation needed)
+# No external dependency for threading, as it is a built-in Python library.
 
-# Required for managing subprocess calls
-subprocess32==3.5.4  # Subprocess module for additional process management capabilities
+# Time-Based Operations (Already built-in to Python, no separate installation needed)
+# No external dependency for time, as it is a built-in Python library.
+
+# Subprocess Management (Already built-in to Python, no separate installation needed)
+# No external dependency for subprocess, as it is a built-in Python library.
