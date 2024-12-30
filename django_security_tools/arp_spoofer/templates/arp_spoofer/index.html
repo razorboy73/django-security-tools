@@ -4,6 +4,15 @@
 
 {% block content %}
 <h2>ARP Spoofer Dashboard</h2>
+<p>
+    <strong>Description:</strong> This tool allows you to scan an internal network to identify the attached devices and then launch a spoofing attack by following the steps below.  As part of the attack, port forwarding will be enabled, to the target maching will still have internet access.
+</p>
+<ol>
+    <li><strong>Step 1:</strong> Click <em>Find Gateway</em> to identify your gateway IP.</li>
+    <li><strong>Step 2:</strong> Click <em>Scan Network</em> to identify devices on the network.</li>
+    <li><strong>Step 3:</strong> Select a target device and click <em>Start Spoofing</em>.  The will enable port forwarding and the UI will display the number of packets sent to the target computer</li>
+    <li><strong>Step 4:</strong> Click <em>Stop Spoofing</em> to stop the spoofing attack and restore the routing tables on the target.</li>
+</ol>
 <p>Use this tool responsibly and only in environments where you have explicit permission to test.</p>
 
 <!-- Messages Section -->
@@ -18,26 +27,67 @@
 {% endif %}
 
 <!-- Find Gateway Button -->
-<button id="find-gateway-btn" class="btn btn-info">Find Gateway</button>
-<div id="gateway-info" class="mt-3"></div>
-
-<!-- Find Gateway -->
-<button id="scan-network-btn" class="btn btn-primary">Scan Network</button>
-
-<div id="network-results" style="display:none;">
-    <h3>Connected Devices</h3>
-    <form method="post" action="{% url 'arp_spoofer:start_spoofing' %}">
-        {% csrf_token %}
-        <label for="target-dropdown">Select a target device:</label>
-        <select id="target-dropdown" name="target_ip" required>
-            <option value="" disabled selected>Select a device</option>
-        </select>
-        <input type="hidden" id="router-ip" name="router_ip">
-        <button type="submit" class="btn btn-success">Start Spoofing</button>
-    </form>
+<div class="mb-4">
+    <button id="find-gateway-btn" class="btn btn-info btn-lg mb-3">Find Gateway</button>
+    <div id="gateway-info" class="mt-3"></div>
 </div>
 
+<!-- Scan Network Button -->
+<div class="mb-4">
+    <button id="scan-network-btn" class="btn btn-primary btn-lg mb-3">Scan Network</button>
+    <div id="network-results" style="display:none;">
+        <h3>Connected Devices</h3>
+        <form method="post" action="{% url 'arp_spoofer:start_spoofing' %}">
+            {% csrf_token %}
+            <label for="target-dropdown">Select a target device:</label>
+            <select id="target-dropdown" name="target_ip" required class="form-select mb-3">
+                <option value="" disabled selected>Select a device</option>
+            </select>
+            <input type="hidden" id="router-ip" name="router_ip">
+            <button type="submit" class="btn btn-success btn-lg">Start Spoofing</button>
+        </form>
+    </div>
+</div>
+
+<!-- Dynamic Buttons -->
+{% if is_spoofing %}
+    <!-- Stop Spoofing -->
+    <form method="post" action="{% url 'arp_spoofer:stop_spoofing' %}">
+        {% csrf_token %}
+        <input type="hidden" name="target_ip" value="{{ selected_target_ip }}">
+        <input type="hidden" name="router_ip" value="{{ selected_router_ip }}">
+        <button type="submit" class="btn btn-danger btn-lg">Stop Spoofing</button>
+    </form>
+    <div id="packet-count" class="mt-3">
+        <strong>Packets Sent:</strong> <span id="packet-counter">0</span>
+    </div>
+{% endif %}
+
 <script>
+    // Find Gateway Button
+    document.getElementById('find-gateway-btn').addEventListener('click', function () {
+        fetch("{% url 'arp_spoofer:find_gateway' %}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('gateway-info').innerHTML = `
+                        <div class="alert alert-danger">Error: ${data.error}</div>`;
+                } else {
+                    document.getElementById('gateway-info').innerHTML = `
+                        <div class="alert alert-success">
+                            Gateway IP: ${data.ip_address}<br>
+                            Gateway MAC: ${data.mac_address}
+                        </div>`;
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching gateway details:', err);
+                document.getElementById('gateway-info').innerHTML = `
+                    <div class="alert alert-danger">An unexpected error occurred.</div>`;
+            });
+    });
+
+    // Scan Network Button
     document.getElementById('scan-network-btn').addEventListener('click', function () {
         fetch("{% url 'arp_spoofer:scan_network' %}", {
             method: 'POST',
@@ -64,56 +114,9 @@
             })
             .catch(error => console.error('Error scanning network:', error));
     });
-</script>
-
-<!-- Dynamic Buttons -->
-{% if is_spoofing %}
-    <!-- Stop Spoofing -->
-    <form method="post" action="{% url 'arp_spoofer:stop_spoofing' %}">
-        {% csrf_token %}
-        <input type="hidden" name="target_ip" value="{{ selected_target_ip }}">
-        <input type="hidden" name="router_ip" value="{{ selected_router_ip }}">
-        <button type="submit" class="btn btn-danger">Stop Spoofing</button>
-    </form>
-    <div id="packet-count" class="mt-3">
-        <strong>Packets Sent:</strong> <span id="packet-counter">0</span>
-    </div>
-{% else %}
-    <!-- Start Spoofing -->
-    <form method="post" action="{% url 'arp_spoofer:start_spoofing' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-success">Start Spoofing</button>
-    </form>
-{% endif %}
-
-<script>
-    document.getElementById('find-gateway-btn').addEventListener('click', function () {
-        // Fetch gateway details via AJAX
-        fetch("{% url 'arp_spoofer:find_gateway' %}")
-            .then(response => response.json())
-            .then(data => {
-                // Check for errors
-                if (data.error) {
-                    document.getElementById('gateway-info').innerHTML = `
-                        <div class="alert alert-danger">Error: ${data.error}</div>`;
-                } else {
-                    // Display gateway IP and MAC address
-                    document.getElementById('gateway-info').innerHTML = `
-                        <div class="alert alert-success">
-                            Gateway IP: ${data.ip_address}<br>
-                            Gateway MAC: ${data.mac_address}
-                        </div>`;
-                }
-            })
-            .catch(err => {
-                console.error('Error fetching gateway details:', err);
-                document.getElementById('gateway-info').innerHTML = `
-                    <div class="alert alert-danger">An unexpected error occurred.</div>`;
-            });
-    });
 
     {% if is_spoofing %}
-    // Function to fetch the packet count periodically
+    // Fetch Packet Count
     function updatePacketCount() {
         fetch("{% url 'arp_spoofer:get_packet_count' %}")
             .then(response => response.json())
@@ -123,7 +126,7 @@
             .catch(err => console.error("Error fetching packet count:", err));
     }
 
-    // Update packet count every second while spoofing
+    // Update Packet Count Periodically
     setInterval(updatePacketCount, 1000);
     {% endif %}
 </script>
